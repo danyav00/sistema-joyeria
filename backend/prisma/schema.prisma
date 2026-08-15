@@ -1,0 +1,56 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+enum Rol {
+  ADMINISTRADOR
+  EMPLEADO
+  SOCIO
+}
+
+enum TipoTurno {
+  MATUTINO
+  VESPERTINO
+}
+
+enum EstadoTurno {
+  ABIERTO
+  CERRADO
+}
+
+model Usuario {
+  id            Int      @id @default(autoincrement())
+  nombre        String
+  usuario       String   @unique
+  contrasena    String
+  rol           Rol
+  activo        Boolean  @default(true)
+  fechaCreacion DateTime @default(now())
+
+  turnos Turno[]
+
+  @@map("usuarios")
+}
+
+model Turno {
+  id             Int         @id @default(autoincrement())
+  tipo           TipoTurno
+  usuarioId      Int
+  usuario        Usuario     @relation(fields: [usuarioId], references: [id])
+  fechaApertura  DateTime    @default(now())
+  horaApertura   String
+  fechaCierre    DateTime?
+  horaCierre     String?
+  estado         EstadoTurno @default(ABIERTO)
+
+  @@map("turnos")
+}
