@@ -36,9 +36,12 @@ model Usuario {
   activo        Boolean  @default(true)
   fechaCreacion DateTime @default(now())
 
-  turnos Turno[]
-  movimientos MovimientoInventario[]
-
+turnos          Turno[]
+  movimientos     MovimientoInventario[]
+  ventas          Venta[]
+  apartados       Apartado[]
+  apartadoAbonos  ApartadoAbono[]
+  
   @@map("usuarios")
 }
 
@@ -52,6 +55,7 @@ model Turno {
   fechaCierre    DateTime?
   horaCierre     String?
   estado         EstadoTurno @default(ABIERTO)
+  ventas Venta[]
 
   @@map("turnos")
 }
@@ -101,6 +105,8 @@ model Producto {
   fechaCreacion   DateTime       @default(now())
 
   movimientos     MovimientoInventario[]
+  ventaDetalles   VentaDetalle[]
+  apartados       Apartado[]
 
   @@map("productos")
 }
@@ -118,4 +124,105 @@ model MovimientoInventario {
   nota           String?
 
   @@map("movimientos_inventario")
+}
+enum TipoVenta {
+  MENUDEO
+  MAYOREO
+}
+
+enum EstadoVenta {
+  COMPLETADA
+  CANCELADA
+  CON_DEVOLUCION
+}
+
+enum MetodoPago {
+  EFECTIVO
+  TARJETA
+  TRANSFERENCIA
+  DEPOSITO
+}
+
+enum EstadoApartado {
+  ACTIVO
+  LIQUIDADO
+  ENTREGADO
+  CANCELADO
+}
+
+model Venta {
+  id          Int         @id @default(autoincrement())
+  folio       String      @unique
+  usuarioId   Int
+  usuario     Usuario     @relation(fields: [usuarioId], references: [id])
+  turnoId     Int
+  turno       Turno       @relation(fields: [turnoId], references: [id])
+  tipoVenta   TipoVenta
+  mayoristaId Int?
+  subtotal    Decimal     @db.Decimal(10, 2)
+  descuento   Decimal     @default(0) @db.Decimal(10, 2)
+  total       Decimal     @db.Decimal(10, 2)
+  fecha       DateTime    @default(now())
+  estado      EstadoVenta @default(COMPLETADA)
+
+  detalles VentaDetalle[]
+  pagos    VentaPago[]
+
+  @@map("ventas")
+}
+
+model VentaDetalle {
+  id             Int      @id @default(autoincrement())
+  ventaId        Int
+  venta          Venta    @relation(fields: [ventaId], references: [id])
+  productoId     Int
+  producto       Producto @relation(fields: [productoId], references: [id])
+  cantidad       Int
+  precioUnitario Decimal  @db.Decimal(10, 2)
+  subtotal       Decimal  @db.Decimal(10, 2)
+
+  @@map("venta_detalle")
+}
+
+model VentaPago {
+  id         Int        @id @default(autoincrement())
+  ventaId    Int
+  venta      Venta      @relation(fields: [ventaId], references: [id])
+  metodoPago MetodoPago
+  monto      Decimal    @db.Decimal(10, 2)
+
+  @@map("venta_pagos")
+}
+
+model Apartado {
+  id              Int            @id @default(autoincrement())
+  folio           String         @unique
+  productoId      Int
+  producto        Producto       @relation(fields: [productoId], references: [id])
+  clienteNombre   String
+  clienteTelefono String
+  usuarioId       Int
+  usuario         Usuario        @relation(fields: [usuarioId], references: [id])
+  precioTotal     Decimal        @db.Decimal(10, 2)
+  anticipo        Decimal        @db.Decimal(10, 2)
+  saldoPendiente  Decimal        @db.Decimal(10, 2)
+  estado          EstadoApartado @default(ACTIVO)
+  fechaApartado   DateTime       @default(now())
+
+  abonos ApartadoAbono[]
+
+  @@map("apartados")
+}
+
+model ApartadoAbono {
+  id         Int        @id @default(autoincrement())
+  apartadoId Int
+  apartado   Apartado   @relation(fields: [apartadoId], references: [id])
+  monto      Decimal    @db.Decimal(10, 2)
+  metodoPago MetodoPago
+  usuarioId  Int
+  usuario    Usuario    @relation(fields: [usuarioId], references: [id])
+  fecha      DateTime   @default(now())
+
+  @@map("apartado_abonos")
 }
