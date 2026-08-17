@@ -43,6 +43,7 @@ turnos          Turno[]
   apartadoAbonos  ApartadoAbono[]
   gastos          Gasto[]
   cortes          Corte[]
+  auditorias      Auditoria[]
   
   @@map("usuarios")
 }
@@ -173,6 +174,7 @@ model Venta {
   detalles VentaDetalle[]
   pagos    VentaPago[]
   compraMayorista MayoristaCompra?
+  tickets         Ticket[]
 
   @@map("ventas")
 }
@@ -298,4 +300,34 @@ model Corte {
   fecha                DateTime @default(now())
 
   @@map("cortes")
+}
+enum TipoTicket {
+  DIGITAL
+  FISICO
+}
+
+model Auditoria {
+  id             Int      @id @default(autoincrement())
+  usuarioId      Int
+  usuario        Usuario  @relation(fields: [usuarioId], references: [id])
+  accion         String
+  tablaAfectada  String
+  registroId     Int
+  detalle        String?
+  fecha          DateTime @default(now())
+
+  @@map("auditoria")
+}
+
+model Ticket {
+  id               Int        @id @default(autoincrement())
+  ventaId          Int
+  venta            Venta      @relation(fields: [ventaId], references: [id])
+  tipo             TipoTicket
+  enviadoWhatsapp  Boolean    @default(false)
+  telefonoEnvio    String?
+  fechaGenerado    DateTime   @default(now())
+  fechaEnviado     DateTime?
+
+  @@map("tickets")
 }
