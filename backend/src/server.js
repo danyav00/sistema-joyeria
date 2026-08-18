@@ -16,6 +16,8 @@ const turnosRoutes = require('./routes/turnos.routes');
 app.use('/api/turnos', turnosRoutes);
 const ventasRoutes = require('./routes/ventas.routes');
 app.use('/api/ventas', ventasRoutes);
+const apartadosRoutes = require('./routes/apartados.routes');
+app.use('/api/apartados', apartadosRoutes);
 
 app.get('/', (req, res) => {
   res.json({ mensaje: 'Servidor del Sistema Joyería funcionando correctamente' });
