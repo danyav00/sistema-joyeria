@@ -18,6 +18,8 @@ const ventasRoutes = require('./routes/ventas.routes');
 app.use('/api/ventas', ventasRoutes);
 const apartadosRoutes = require('./routes/apartados.routes');
 app.use('/api/apartados', apartadosRoutes);
+const mayoristasRoutes = require('./routes/mayoristas.routes');
+app.use('/api/mayoristas', mayoristasRoutes);
 
 app.get('/', (req, res) => {
   res.json({ mensaje: 'Servidor del Sistema Joyería funcionando correctamente' });
