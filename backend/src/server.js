@@ -12,6 +12,10 @@ const codigosPrecioRoutes = require('./routes/codigosPrecio.routes');
 app.use('/api/codigos-precio', codigosPrecioRoutes);
 const productosRoutes = require('./routes/productos.routes');
 app.use('/api/productos', productosRoutes);
+const turnosRoutes = require('./routes/turnos.routes');
+app.use('/api/turnos', turnosRoutes);
+const ventasRoutes = require('./routes/ventas.routes');
+app.use('/api/ventas', ventasRoutes);
 
 app.get('/', (req, res) => {
   res.json({ mensaje: 'Servidor del Sistema Joyería funcionando correctamente' });

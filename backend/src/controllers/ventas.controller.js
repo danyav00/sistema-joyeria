@@ -1,0 +1,140 @@
+const prisma = require('../utils/prisma');
+
+function generarFolio() {
+  return `V-${Date.now()}`;
+}
+
+async function crearVenta(req, res) {
+  try {
+    const { turnoId, tipoVenta, productos, pagos, descuento, mayoristaId } = req.body;
+
+    if (!turnoId || !tipoVenta || !productos || productos.length === 0 || !pagos || pagos.length === 0) {
+      return res.status(400).json({ error: 'Faltan datos obligatorios para la venta' });
+    }
+
+    const resultado = await prisma.$transaction(async (tx) => {
+      let subtotal = 0;
+      const detallesData = [];
+
+      for (const item of productos) {
+        const producto = await tx.producto.findUnique({
+          where: { id: item.productoId },
+          include: { codigoPrecio: true },
+        });
+
+        if (!producto) throw new Error(`Producto ${item.productoId} no encontrado`);
+        if (producto.estado !== 'DISPONIBLE') throw new Error(`Producto ${producto.nombre} no esta disponible`);
+        if (producto.existencia < item.cantidad) throw new Error(`Existencia insuficiente de ${producto.nombre}`);
+
+        const precioUnitario = Number(producto.codigoPrecio.precio);
+        const subtotalLinea = precioUnitario * item.cantidad;
+        subtotal += subtotalLinea;
+
+        detallesData.push({
+          productoId: producto.id,
+          cantidad: item.cantidad,
+          precioUnitario,
+          subtotal: subtotalLinea,
+        });
+
+        const nuevaExistencia = producto.existencia - item.cantidad;
+        await tx.producto.update({
+          where: { id: producto.id },
+          data: {
+            existencia: nuevaExistencia,
+            estado: nuevaExistencia === 0 ? 'VENDIDO' : 'DISPONIBLE',
+          },
+        });
+
+        await tx.movimientoInventario.create({
+          data: {
+            productoId: producto.id,
+            tipoMovimiento: 'VENTA',
+            cantidad: item.cantidad,
+            usuarioId: req.usuario.id,
+            nota: 'Venta',
+          },
+        });
+      }
+
+      const descuentoAplicado = Number(descuento) || 0;
+      const total = subtotal - descuentoAplicado;
+
+      const totalPagos = pagos.reduce((suma, p) => suma + Number(p.monto), 0);
+      if (Math.abs(totalPagos - total) > 0.01) {
+        throw new Error(`Los pagos ($${totalPagos}) no coinciden con el total de la venta ($${total})`);
+      }
+
+      const venta = await tx.venta.create({
+        data: {
+          folio: generarFolio(),
+          usuarioId: req.usuario.id,
+          turnoId: Number(turnoId),
+          tipoVenta,
+          mayoristaId: mayoristaId ? Number(mayoristaId) : null,
+          subtotal,
+          descuento: descuentoAplicado,
+          total,
+          detalles: { create: detallesData },
+          pagos: { create: pagos.map((p) => ({ metodoPago: p.metodoPago, monto: Number(p.monto) })) },
+        },
+        include: { detalles: true, pagos: true },
+      });
+
+      return venta;
+    });
+
+    res.status(201).json(resultado);
+  } catch (error) {
+    console.error(error);
+    res.status(400).json({ error: error.message || 'Error al crear la venta' });
+  }
+}
+
+async function listarVentas(req, res) {
+  try {
+    const { turnoId, usuarioId, fecha } = req.query;
+    const filtros = {};
+    if (turnoId) filtros.turnoId = Number(turnoId);
+    if (usuarioId) filtros.usuarioId = Number(usuarioId);
+    if (fecha) {
+      const inicio = new Date(fecha);
+      const fin = new Date(fecha);
+      fin.setDate(fin.getDate() + 1);
+      filtros.fecha = { gte: inicio, lt: fin };
+    }
+
+    const ventas = await prisma.venta.findMany({
+      where: filtros,
+      include: { detalles: true, pagos: true },
+      orderBy: { fecha: 'desc' },
+    });
+
+    res.json(ventas);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al listar ventas' });
+  }
+}
+
+async function obtenerVenta(req, res) {
+  try {
+    const { id } = req.params;
+    const venta = await prisma.venta.findUnique({
+      where: { id: Number(id) },
+      include: {
+        detalles: { include: { producto: true } },
+        pagos: true,
+        usuario: { select: { nombre: true } },
+      },
+    });
+
+    if (!venta) return res.status(404).json({ error: 'Venta no encontrada' });
+    res.json(venta);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al obtener la venta' });
+  }
+}
+
+module.exports = { crearVenta, listarVentas, obtenerVenta };
