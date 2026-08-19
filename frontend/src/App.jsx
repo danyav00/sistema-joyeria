@@ -7,6 +7,7 @@ import Ventas from './pages/Ventas';
 import Apartados from './pages/Apartados';
 import Mayoristas from './pages/Mayoristas';
 import Gastos from './pages/Gastos';
+import Cortes from './pages/Cortes';
 
 function RutaProtegida({ children }) {
   const { usuario } = useAuth();
@@ -71,6 +72,14 @@ function App() {
         element={
           <RutaProtegida>
             <Gastos />
+          </RutaProtegida>
+        }
+      />
+            <Route
+        path="/cortes"
+        element={
+          <RutaProtegida>
+            <Cortes />
           </RutaProtegida>
         }
       />
