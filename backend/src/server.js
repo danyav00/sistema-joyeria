@@ -26,6 +26,8 @@ const cortesRoutes = require('./routes/cortes.routes');
 app.use('/api/cortes', cortesRoutes);
 const reportesRoutes = require('./routes/reportes.routes');
 app.use('/api/reportes', reportesRoutes);
+const dashboardRoutes = require('./routes/dashboard.routes');
+app.use('/api/dashboard', dashboardRoutes);
 
 app.get('/', (req, res) => {
   res.json({ mensaje: 'Servidor del Sistema Joyería funcionando correctamente' });
