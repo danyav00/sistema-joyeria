@@ -28,6 +28,8 @@ const reportesRoutes = require('./routes/reportes.routes');
 app.use('/api/reportes', reportesRoutes);
 const dashboardRoutes = require('./routes/dashboard.routes');
 app.use('/api/dashboard', dashboardRoutes);
+const auditoriaRoutes = require('./routes/auditoria.routes');
+app.use('/api/auditoria', auditoriaRoutes);
 
 app.get('/', (req, res) => {
   res.json({ mensaje: 'Servidor del Sistema Joyería funcionando correctamente' });

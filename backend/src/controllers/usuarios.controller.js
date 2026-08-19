@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const prisma = require('../utils/prisma');
+const { registrarAuditoria } = require('../utils/auditoria');
 
 async function crearUsuario(req, res) {
   try {
@@ -115,6 +116,13 @@ async function actualizarUsuario(req, res) {
       where: { id: Number(id) },
       data: { nombre, rol, activo },
       select: { id: true, nombre: true, usuario: true, rol: true, activo: true },
+    });
+        await registrarAuditoria({
+      usuarioId: req.usuario.id,
+      accion: 'Actualizo usuario',
+      tablaAfectada: 'usuarios',
+      registroId: usuarioActualizado.id,
+      detalle: JSON.stringify({ nombre, rol, activo }),
     });
     res.json(usuarioActualizado);
   } catch (error) {
