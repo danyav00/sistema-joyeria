@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import Inventario from './pages/Inventario';
 import Ventas from './pages/Ventas';
 import Apartados from './pages/Apartados';
+import Mayoristas from './pages/Mayoristas';
 
 function RutaProtegida({ children }) {
   const { usuario } = useAuth();
@@ -53,6 +54,14 @@ function App() {
         element={
           <RutaProtegida>
             <Apartados />
+          </RutaProtegida>
+        }
+      />
+            <Route
+        path="/mayoristas"
+        element={
+          <RutaProtegida>
+            <Mayoristas />
           </RutaProtegida>
         }
       />
