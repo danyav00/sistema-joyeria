@@ -24,7 +24,7 @@ export default function Layout({ children }) {
       <aside className="w-56 border-r border-[#2a251c] flex flex-col">
         <div className="p-5 border-b border-[#2a251c]">
           <h1 className="text-lg text-[#f5f1e8]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-            Sistema Joyería
+            Nixca Joyería
           </h1>
         </div>
 

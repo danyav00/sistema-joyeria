@@ -32,7 +32,7 @@ export default function Login() {
             <div className="w-4 h-4 bg-[#c9a227] rotate-45"></div>
           </div>
           <h1 className="text-3xl text-[#f5f1e8]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-            Sistema Joyería
+            Nixca Joyería
           </h1>
           <p className="text-[#8a8478] text-sm mt-1" style={{ fontFamily: "'Inter', sans-serif" }}>
             Panel administrativo
