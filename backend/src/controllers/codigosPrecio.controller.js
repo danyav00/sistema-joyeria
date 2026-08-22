@@ -6,7 +6,15 @@ async function crearCodigoPrecio(req, res) {
     if (!codigo) return res.status(400).json({ error: 'El codigo es obligatorio' });
 
     const codigoNum = parseInt(codigo, 10);
-    const precio = (codigoNum + 4) * 10;
+
+    let precio;
+    if (codigoNum <= 95) {
+      // Codigos consecutivos: aplican la formula
+      precio = (codigoNum + 4) * 10;
+    } else {
+      // Codigos ordinarios: el precio es el mismo numero del codigo
+      precio = codigoNum;
+    }
 
     const nuevo = await prisma.codigoPrecio.create({
       data: { codigo, precio },
