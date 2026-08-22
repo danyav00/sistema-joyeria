@@ -14,6 +14,9 @@ export default function Inventario() {
     sku: '', codigoPrecioId: '', nombre: '', descripcion: '', material: 'ORO', tipo: '', existencia: '',
   });
 
+  const [ajustando, setAjustando] = useState(null);
+  const [cantidadAjuste, setCantidadAjuste] = useState('');
+
   function cargarDatos() {
     setCargando(true);
     Promise.all([api.get('/productos'), api.get('/codigos-precio')])
@@ -38,6 +41,21 @@ export default function Inventario() {
       cargarDatos();
     } catch (err) {
       alert(err.response?.data?.error || 'Error al crear el producto');
+    }
+  }
+
+  async function ajustarInventario(productoId) {
+    if (!cantidadAjuste) return;
+    try {
+      await api.patch(`/productos/${productoId}/ajuste`, {
+        cantidad: Number(cantidadAjuste),
+        nota: 'Ajuste manual desde inventario',
+      });
+      setAjustando(null);
+      setCantidadAjuste('');
+      cargarDatos();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Error al ajustar inventario');
     }
   }
 
@@ -84,7 +102,7 @@ export default function Inventario() {
             <input placeholder="Descripción" value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
               className="bg-transparent border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227] col-span-2" />
 
-              <select value={form.material} onChange={(e) => setForm({ ...form, material: e.target.value })}
+            <select value={form.material} onChange={(e) => setForm({ ...form, material: e.target.value })}
               className="bg-[#1a1815] border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227]">
               <option value="ORO">Oro</option>
               <option value="PLATA">Plata</option>
@@ -116,6 +134,7 @@ export default function Inventario() {
                 <th className="pb-3">Precio</th>
                 <th className="pb-3">Existencia</th>
                 <th className="pb-3">Estado</th>
+                {usuario?.rol === 'ADMINISTRADOR' && <th className="pb-3">Acción</th>}
               </tr>
             </thead>
             <tbody>
@@ -127,6 +146,27 @@ export default function Inventario() {
                   <td className="py-3 text-[#c9a227]">${Number(p.codigoPrecio.precio).toFixed(2)}</td>
                   <td className="py-3 text-[#f5f1e8]">{p.existencia}</td>
                   <td className={`py-3 ${estadoColor[p.estado]}`}>{p.estado}</td>
+                  {usuario?.rol === 'ADMINISTRADOR' && (
+                    <td className="py-3">
+                      {ajustando === p.id ? (
+                        <div className="flex gap-1 items-center">
+                          <input
+                            type="number"
+                            placeholder="+/-"
+                            value={cantidadAjuste}
+                            onChange={(e) => setCantidadAjuste(e.target.value)}
+                            className="bg-transparent border border-[#3a352c] text-[#f5f1e8] text-xs px-2 py-1 w-16"
+                          />
+                          <button onClick={() => ajustarInventario(p.id)} className="text-xs text-[#c9a227]">✓</button>
+                          <button onClick={() => { setAjustando(null); setCantidadAjuste(''); }} className="text-xs text-red-400">✕</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => setAjustando(p.id)} className="text-xs text-[#c9a227] hover:underline">
+                          Ajustar
+                        </button>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
