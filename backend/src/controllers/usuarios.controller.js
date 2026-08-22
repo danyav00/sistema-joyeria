@@ -162,4 +162,35 @@ async function cambiarContrasena(req, res) {
     res.status(500).json({ error: 'Error al cambiar la contraseña' });
   }
 }
-module.exports = { crearUsuario, login, listarUsuarios, obtenerUsuario, actualizarUsuario, cambiarContrasena };
+async function resetearContrasena(req, res) {
+  try {
+    const { id } = req.params;
+    const { contrasenaNueva } = req.body;
+
+    if (!contrasenaNueva || contrasenaNueva.length < 6) {
+      return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 6 caracteres' });
+    }
+
+    const contrasenaEncriptada = await bcrypt.hash(contrasenaNueva, 10);
+
+    const usuarioActualizado = await prisma.usuario.update({
+      where: { id: Number(id) },
+      data: { contrasena: contrasenaEncriptada },
+      select: { id: true, nombre: true, usuario: true },
+    });
+
+    await registrarAuditoria({
+      usuarioId: req.usuario.id,
+      accion: 'Reseteo contrasena de otro usuario',
+      tablaAfectada: 'usuarios',
+      registroId: usuarioActualizado.id,
+      detalle: `Contrasena restablecida para ${usuarioActualizado.usuario}`,
+    });
+
+    res.json({ mensaje: `Contraseña de ${usuarioActualizado.nombre} restablecida correctamente` });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al restablecer la contraseña' });
+  }
+}
+module.exports = { crearUsuario, login, listarUsuarios, obtenerUsuario, actualizarUsuario, cambiarContrasena, resetearContrasena };

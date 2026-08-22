@@ -53,6 +53,17 @@ export default function Usuarios() {
       alert(err.response?.data?.error || 'Error al actualizar el usuario');
     }
   }
+  
+  async function resetearContrasena(u) {
+    const nuevaContrasena = prompt(`Escribe la nueva contraseña para ${u.nombre} (mínimo 6 caracteres):`);
+    if (!nuevaContrasena) return;
+    try {
+      const res = await api.put(`/usuarios/${u.id}/resetear-contrasena`, { contrasenaNueva: nuevaContrasena });
+      alert(res.data.mensaje);
+    } catch (err) {
+      alert(err.response?.data?.error || 'Error al restablecer la contraseña');
+    }
+  }
 
   return (
     <Layout>
@@ -135,9 +146,12 @@ export default function Usuarios() {
                   <td className={`py-3 ${u.activo ? 'text-green-400' : 'text-red-400'}`}>
                     {u.activo ? 'Activo' : 'Inactivo'}
                   </td>
-                  <td className="py-3">
+                                    <td className="py-3 flex gap-3">
                     <button onClick={() => cambiarActivo(u)} className="text-xs text-[#c9a227] hover:underline">
                       {u.activo ? 'Desactivar' : 'Activar'}
+                    </button>
+                    <button onClick={() => resetearContrasena(u)} className="text-xs text-[#8a8478] hover:text-[#c9a227] hover:underline">
+                      Restablecer contraseña
                     </button>
                   </td>
                 </tr>
