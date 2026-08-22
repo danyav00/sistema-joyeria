@@ -84,11 +84,12 @@ export default function Inventario() {
             <input placeholder="Descripción" value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
               className="bg-transparent border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227] col-span-2" />
 
-            <select value={form.material} onChange={(e) => setForm({ ...form, material: e.target.value })}
+              <select value={form.material} onChange={(e) => setForm({ ...form, material: e.target.value })}
               className="bg-[#1a1815] border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227]">
               <option value="ORO">Oro</option>
               <option value="PLATA">Plata</option>
               <option value="ORO_LAMINADO">Oro laminado</option>
+              <option value="OTRO">Otro</option>
             </select>
 
             <input placeholder="Tipo (Anillos, Aretes...)" value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })}

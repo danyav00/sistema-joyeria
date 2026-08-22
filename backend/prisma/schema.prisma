@@ -68,6 +68,7 @@ enum Material {
   ORO
   PLATA
   ORO_LAMINADO
+  OTRO
 }
 
 enum EstadoProducto {

@@ -1,4 +1,5 @@
 const prisma = require('../utils/prisma');
+const { obtenerVersiculoAleatorio } = require('../utils/versiculos');
 
 async function generarTicket(req, res) {
   try {
@@ -13,11 +14,14 @@ async function generarTicket(req, res) {
 
     if (!venta) return res.status(404).json({ error: 'Venta no encontrada' });
 
-    const ticket = await prisma.ticket.create({
+       const ticket = await prisma.ticket.create({
       data: { ventaId: venta.id, tipo },
     });
 
-    res.status(201).json({ ticket, venta });
+    const versiculo = obtenerVersiculoAleatorio();
+
+    res.status(201).json({ ticket, venta, versiculo });
+    
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error al generar el ticket' });
