@@ -130,4 +130,36 @@ async function actualizarUsuario(req, res) {
     res.status(500).json({ error: 'Error al actualizar el usuario' });
   }
 }
-module.exports = { crearUsuario, login, listarUsuarios, obtenerUsuario, actualizarUsuario };
+async function cambiarContrasena(req, res) {
+  try {
+    const { contrasenaActual, contrasenaNueva } = req.body;
+
+    if (!contrasenaActual || !contrasenaNueva) {
+      return res.status(400).json({ error: 'Faltan datos obligatorios' });
+    }
+
+    if (contrasenaNueva.length < 6) {
+      return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 6 caracteres' });
+    }
+
+    const usuario = await prisma.usuario.findUnique({ where: { id: req.usuario.id } });
+
+    const contrasenaValida = await bcrypt.compare(contrasenaActual, usuario.contrasena);
+    if (!contrasenaValida) {
+      return res.status(401).json({ error: 'La contraseña actual es incorrecta' });
+    }
+
+    const contrasenaEncriptada = await bcrypt.hash(contrasenaNueva, 10);
+
+    await prisma.usuario.update({
+      where: { id: req.usuario.id },
+      data: { contrasena: contrasenaEncriptada },
+    });
+
+    res.json({ mensaje: 'Contraseña actualizada correctamente' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al cambiar la contraseña' });
+  }
+}
+module.exports = { crearUsuario, login, listarUsuarios, obtenerUsuario, actualizarUsuario, cambiarContrasena };

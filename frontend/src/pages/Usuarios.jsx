@@ -8,6 +8,9 @@ export default function Usuarios() {
   const [mostrarForm, setMostrarForm] = useState(false);
   const [mensaje, setMensaje] = useState('');
   const [form, setForm] = useState({ nombre: '', usuario: '', contrasena: '', rol: 'EMPLEADO' });
+  const [mostrarCambioPass, setMostrarCambioPass] = useState(false);
+  const [formPass, setFormPass] = useState({ contrasenaActual: '', contrasenaNueva: '' });
+  const [mensajePass, setMensajePass] = useState('');
 
   function cargarDatos() {
     setCargando(true);
@@ -30,6 +33,17 @@ export default function Usuarios() {
       setMensaje(err.response?.data?.error || 'Error al crear el usuario');
     }
   }
+    async function cambiarMiContrasena(e) {
+    e.preventDefault();
+    setMensajePass('');
+    try {
+      await api.put('/usuarios/cambiar-contrasena', formPass);
+      setMensajePass('Contraseña actualizada correctamente');
+      setFormPass({ contrasenaActual: '', contrasenaNueva: '' });
+    } catch (err) {
+      setMensajePass(err.response?.data?.error || 'Error al cambiar la contraseña');
+    }
+  }
 
   async function cambiarActivo(u) {
     try {
@@ -43,17 +57,40 @@ export default function Usuarios() {
   return (
     <Layout>
       <div className="p-8" style={{ fontFamily: "'Inter', sans-serif" }}>
-        <div className="flex items-center justify-between mb-6">
+               <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl text-[#f5f1e8]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
             Usuarios
           </h2>
-          <button
-            onClick={() => setMostrarForm(!mostrarForm)}
-            className="bg-[#c9a227] hover:bg-[#b8931f] text-[#1a1815] font-medium px-4 py-2 text-sm transition-colors"
-          >
-            {mostrarForm ? 'Cancelar' : '+ Nuevo usuario'}
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setMostrarCambioPass(!mostrarCambioPass)}
+              className="border border-[#c9a227] text-[#c9a227] px-4 py-2 text-sm hover:bg-[#c9a227]/10 transition-colors"
+            >
+              {mostrarCambioPass ? 'Cancelar' : 'Cambiar mi contraseña'}
+            </button>
+            <button
+              onClick={() => setMostrarForm(!mostrarForm)}
+              className="bg-[#c9a227] hover:bg-[#b8931f] text-[#1a1815] font-medium px-4 py-2 text-sm transition-colors"
+            >
+              {mostrarForm ? 'Cancelar' : '+ Nuevo usuario'}
+            </button>
+          </div>
         </div>
+
+        {mostrarCambioPass && (
+          <form onSubmit={cambiarMiContrasena} className="border border-[#2a251c] p-5 mb-6 grid grid-cols-2 gap-4">
+            <input type="password" placeholder="Contraseña actual" value={formPass.contrasenaActual}
+              onChange={(e) => setFormPass({ ...formPass, contrasenaActual: e.target.value })}
+              className="bg-transparent border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227]" required />
+            <input type="password" placeholder="Contraseña nueva" value={formPass.contrasenaNueva}
+              onChange={(e) => setFormPass({ ...formPass, contrasenaNueva: e.target.value })}
+              className="bg-transparent border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227]" required />
+            {mensajePass && <p className="text-amber-400 text-xs col-span-2">{mensajePass}</p>}
+            <button type="submit" className="bg-[#c9a227] hover:bg-[#b8931f] text-[#1a1815] font-medium py-2 text-sm col-span-2">
+              Actualizar contraseña
+            </button>
+          </form>
+        )}
 
         {mostrarForm && (
           <form onSubmit={crearUsuario} className="border border-[#2a251c] p-5 mb-6 grid grid-cols-2 gap-4">

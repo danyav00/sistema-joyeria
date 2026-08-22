@@ -6,11 +6,13 @@ const {
   listarUsuarios,
   obtenerUsuario,
   actualizarUsuario,
+  cambiarContrasena,
 } = require('../controllers/usuarios.controller');
 const { verificarToken } = require('../middlewares/auth.middleware');
 const { permitirRoles } = require('../middlewares/roles.middleware');
 
 router.post('/login', login);
+router.put('/cambiar-contrasena', verificarToken, cambiarContrasena);
 router.post('/', verificarToken, permitirRoles('ADMINISTRADOR'), crearUsuario);
 router.get('/', verificarToken, permitirRoles('ADMINISTRADOR'), listarUsuarios);
 router.get('/:id', verificarToken, permitirRoles('ADMINISTRADOR'), obtenerUsuario);

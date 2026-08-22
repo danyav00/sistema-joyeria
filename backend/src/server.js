@@ -5,7 +5,7 @@ const cors = require('cors');
 const app = express();
 
 app.use(cors({
-  origin: 'https://sistema-joyeria-tan.vercel.app',
+  origin: ['https://sistema-joyeria-tan.vercel.app', 'http://localhost:5173'],
 }));
 app.use(express.json());
 const usuariosRoutes = require('./routes/usuarios.routes');
