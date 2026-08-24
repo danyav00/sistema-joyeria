@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import logo from '../assets/logo.png';
 
 const menuItems = [
   { path: '/dashboard', label: 'Dashboard', roles: ['ADMINISTRADOR', 'EMPLEADO', 'SOCIO'] },
@@ -22,7 +23,10 @@ export default function Layout({ children }) {
   return (
     <div className="min-h-screen bg-[#1a1815] flex" style={{ fontFamily: "'Inter', sans-serif" }}>
       <aside className="w-56 border-r border-[#2a251c] flex flex-col">
-        <div className="p-5 border-b border-[#2a251c]">
+                <div className="p-5 border-b border-[#2a251c] flex items-center gap-3">
+          <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center overflow-hidden p-1 flex-shrink-0">
+            <img src={logo} alt="Nixca Joyería" className="w-full h-full object-contain" />
+          </div>
           <h1 className="text-lg text-[#f5f1e8]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
             Nixca Joyería
           </h1>

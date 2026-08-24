@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import logo from '../assets/logo.png';
 
 export default function Login() {
   const [usuario, setUsuario] = useState('');
@@ -27,9 +28,9 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-[#1a1815] flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        <div className="text-center mb-10">
-          <div className="w-12 h-12 mx-auto mb-4 border border-[#c9a227] rotate-45 flex items-center justify-center">
-            <div className="w-4 h-4 bg-[#c9a227] rotate-45"></div>
+                <div className="text-center mb-10">
+          <div className="w-20 h-20 mx-auto mb-4 bg-white rounded-full flex items-center justify-center overflow-hidden p-2">
+            <img src={logo} alt="Nixca Joyería" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-3xl text-[#f5f1e8]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
             Nixca Joyería
