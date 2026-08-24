@@ -22,6 +22,8 @@ const apartadosRoutes = require('./routes/apartados.routes');
 app.use('/api/apartados', apartadosRoutes);
 const mayoristasRoutes = require('./routes/mayoristas.routes');
 app.use('/api/mayoristas', mayoristasRoutes);
+const creditosMayoristaRoutes = require('./routes/creditosMayorista.routes');
+app.use('/api/creditos-mayorista', creditosMayoristaRoutes);
 const gastosRoutes = require('./routes/gastos.routes');
 app.use('/api/gastos', gastosRoutes);
 const cortesRoutes = require('./routes/cortes.routes');

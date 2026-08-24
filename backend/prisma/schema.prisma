@@ -44,7 +44,8 @@ turnos          Turno[]
   gastos          Gasto[]
   cortes          Corte[]
   auditorias      Auditoria[]
-  
+  creditosMayorista CreditoMayorista[]
+
   @@map("usuarios")
 }
 
@@ -114,6 +115,7 @@ model Producto {
   movimientos     MovimientoInventario[]
   ventaDetalles   VentaDetalle[]
   apartados       Apartado[]
+  creditoDetalles CreditoMayoristaProducto[]
 
   @@map("productos")
 }
@@ -177,6 +179,7 @@ model Venta {
   pagos    VentaPago[]
   compraMayorista MayoristaCompra?
   tickets         Ticket[]
+  credito         CreditoMayorista?
 
   @@map("ventas")
 }
@@ -251,8 +254,9 @@ model Mayorista {
   fechaUltimaCompra      DateTime?
   fechaRegistro          DateTime        @default(now())
 
-  compras MayoristaCompra[]
-  ventas  Venta[]
+  compras  MayoristaCompra[]
+  ventas   Venta[]
+  creditos CreditoMayorista[]
 
   @@map("mayoristas")
 }
@@ -332,4 +336,43 @@ model Ticket {
   fechaEnviado     DateTime?
 
   @@map("tickets")
+}
+
+enum EstadoCredito {
+  ACTIVO
+  LIQUIDADO
+  CANCELADO
+}
+
+model CreditoMayorista {
+  id               Int           @id @default(autoincrement())
+  folio            String        @unique
+  mayoristaId      Int
+  mayorista        Mayorista     @relation(fields: [mayoristaId], references: [id])
+  totalCredito     Decimal       @db.Decimal(10, 2)
+  totalVendido     Decimal?      @db.Decimal(10, 2)
+  fechaEntrega     DateTime      @default(now())
+  fechaLimite      DateTime
+  fechaLiquidacion DateTime?
+  estado           EstadoCredito @default(ACTIVO)
+  usuarioId        Int
+  usuario          Usuario       @relation(fields: [usuarioId], references: [id])
+
+    productos CreditoMayoristaProducto[]
+  ventaId   Int?    @unique
+  venta     Venta?  @relation(fields: [ventaId], references: [id])
+
+  @@map("creditos_mayorista")
+}
+
+model CreditoMayoristaProducto {
+  id              Int              @id @default(autoincrement())
+  creditoId       Int
+  credito         CreditoMayorista @relation(fields: [creditoId], references: [id])
+  productoId      Int
+  producto        Producto         @relation(fields: [productoId], references: [id])
+  precioAlMomento Decimal          @db.Decimal(10, 2)
+  devuelto        Boolean          @default(false)
+
+  @@map("credito_mayorista_productos")
 }
