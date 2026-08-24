@@ -157,6 +157,22 @@ async function revisarInactivos(req, res) {
     res.status(500).json({ error: 'Error al revisar mayoristas inactivos' });
   }
 }
+async function actualizarMayorista(req, res) {
+  try {
+    const { id } = req.params;
+    const { nombreCompleto, telefono } = req.body;
+
+    const mayoristaActualizado = await prisma.mayorista.update({
+      where: { id: Number(id) },
+      data: { nombreCompleto, telefono },
+    });
+
+    res.json(mayoristaActualizado);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al actualizar el mayorista' });
+  }
+}
 
 module.exports = {
   crearMayorista,
@@ -164,4 +180,5 @@ module.exports = {
   obtenerMayorista,
   registrarCompra,
   revisarInactivos,
+  actualizarMayorista,
 };

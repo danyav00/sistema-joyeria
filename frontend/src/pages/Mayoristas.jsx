@@ -8,6 +8,9 @@ export default function Mayoristas() {
   const [mostrarForm, setMostrarForm] = useState(false);
   const [form, setForm] = useState({ numeroCliente: '', nombreCompleto: '', telefono: '' });
 
+  const [editando, setEditando] = useState(null);
+  const [formEdicion, setFormEdicion] = useState({ nombreCompleto: '', telefono: '' });
+
   function cargarDatos() {
     setCargando(true);
     api.get('/mayoristas').then((res) => setMayoristas(res.data)).finally(() => setCargando(false));
@@ -28,7 +31,7 @@ export default function Mayoristas() {
       alert(err.response?.data?.error || 'Error al crear el mayorista');
     }
   }
-  
+
   async function revisarInactivos() {
     if (!confirm('¿Revisar y suspender mayoristas con más de 30 días sin comprar?')) return;
     try {
@@ -40,10 +43,25 @@ export default function Mayoristas() {
     }
   }
 
+  function iniciarEdicion(m) {
+    setEditando(m.id);
+    setFormEdicion({ nombreCompleto: m.nombreCompleto, telefono: m.telefono });
+  }
+
+  async function guardarEdicion(id) {
+    try {
+      await api.put(`/mayoristas/${id}`, formEdicion);
+      setEditando(null);
+      cargarDatos();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Error al editar el mayorista');
+    }
+  }
+
   return (
     <Layout>
       <div className="p-8" style={{ fontFamily: "'Inter', sans-serif" }}>
-               <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl text-[#f5f1e8]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
             Mayoristas
           </h2>
@@ -62,6 +80,7 @@ export default function Mayoristas() {
             </button>
           </div>
         </div>
+
         {mostrarForm && (
           <form onSubmit={crearMayorista} className="border border-[#2a251c] p-5 mb-6 grid grid-cols-3 gap-4">
             <input placeholder="Número de cliente" value={form.numeroCliente} onChange={(e) => setForm({ ...form, numeroCliente: e.target.value })}
@@ -87,16 +106,50 @@ export default function Mayoristas() {
                 <th className="pb-3">Teléfono</th>
                 <th className="pb-3">Acumulado</th>
                 <th className="pb-3">Estado</th>
+                <th className="pb-3">Acción</th>
               </tr>
             </thead>
             <tbody>
               {mayoristas.map((m) => (
                 <tr key={m.id} className="border-b border-[#2a251c]/50">
                   <td className="py-3 text-[#f5f1e8]">{m.numeroCliente}</td>
-                  <td className="py-3 text-[#f5f1e8]">{m.nombreCompleto}</td>
-                  <td className="py-3 text-[#8a8478]">{m.telefono}</td>
+                  {editando === m.id ? (
+                    <>
+                      <td className="py-2">
+                        <input
+                          value={formEdicion.nombreCompleto}
+                          onChange={(e) => setFormEdicion({ ...formEdicion, nombreCompleto: e.target.value })}
+                          className="bg-transparent border border-[#3a352c] text-[#f5f1e8] text-xs px-2 py-1 w-full"
+                        />
+                      </td>
+                      <td className="py-2">
+                        <input
+                          value={formEdicion.telefono}
+                          onChange={(e) => setFormEdicion({ ...formEdicion, telefono: e.target.value })}
+                          className="bg-transparent border border-[#3a352c] text-[#f5f1e8] text-xs px-2 py-1 w-full"
+                        />
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="py-3 text-[#f5f1e8]">{m.nombreCompleto}</td>
+                      <td className="py-3 text-[#8a8478]">{m.telefono}</td>
+                    </>
+                  )}
                   <td className="py-3 text-[#c9a227]">${Number(m.totalAcumuladoPeriodo).toFixed(2)}</td>
                   <td className={`py-3 ${m.estado === 'ACTIVO' ? 'text-green-400' : 'text-amber-400'}`}>{m.estado}</td>
+                  <td className="py-3">
+                    {editando === m.id ? (
+                      <div className="flex gap-3">
+                        <button onClick={() => guardarEdicion(m.id)} className="text-xs text-[#c9a227]">Guardar</button>
+                        <button onClick={() => setEditando(null)} className="text-xs text-red-400">Cancelar</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => iniciarEdicion(m)} className="text-xs text-[#8a8478] hover:text-[#c9a227] hover:underline">
+                        Editar
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
