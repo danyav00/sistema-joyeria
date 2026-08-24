@@ -1,1 +1,15 @@
 @import "tailwindcss";
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #ticket-imprimir,
+  #ticket-imprimir * {
+    visibility: visible;
+  }
+  #ticket-imprimir {
+    position: absolute;
+    left: 0;
+    top: 0;
+  }
+}

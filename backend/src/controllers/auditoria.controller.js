@@ -11,7 +11,7 @@ async function listarAuditoria(req, res) {
       where: filtros,
       include: { usuario: { select: { nombre: true } } },
       orderBy: { fecha: 'desc' },
-      take: 100,
+      take: 100, 
     });
 
     res.json(registros);

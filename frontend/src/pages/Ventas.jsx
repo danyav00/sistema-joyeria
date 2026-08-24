@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../services/api';
 import Layout from '../components/Layout';
+import Ticket from '../components/Ticket';
 
 export default function Ventas() {
   const [turno, setTurno] = useState(null);
@@ -9,6 +10,7 @@ export default function Ventas() {
   const [pagos, setPagos] = useState([{ metodoPago: 'EFECTIVO', monto: '' }]);
   const [cargando, setCargando] = useState(true);
   const [mensaje, setMensaje] = useState('');
+  const [ticketData, setTicketData] = useState(null);
 
   useEffect(() => {
     Promise.all([api.get('/turnos/activo'), api.get('/productos?estado=DISPONIBLE')])
@@ -61,16 +63,23 @@ export default function Ventas() {
     setPagos([...pagos, { metodoPago: 'EFECTIVO', monto: '' }]);
   }
 
-  async function confirmarVenta() {
+    async function confirmarVenta() {
     setMensaje('');
     try {
-      await api.post('/ventas', {
+      const resVenta = await api.post('/ventas', {
         turnoId: turno.id,
         tipoVenta: 'MENUDEO',
         productos: carrito.map((item) => ({ productoId: item.productoId, cantidad: item.cantidad })),
         pagos: pagos.map((p) => ({ metodoPago: p.metodoPago, monto: Number(p.monto) })),
         descuento: 0,
       });
+
+      const resTicket = await api.post('/tickets', {
+        ventaId: resVenta.data.id,
+        tipo: 'DIGITAL',
+      });
+
+      setTicketData(resTicket.data);
       setMensaje('Venta registrada con exito');
       setCarrito([]);
       setPagos([{ metodoPago: 'EFECTIVO', monto: '' }]);
@@ -79,6 +88,10 @@ export default function Ventas() {
     } catch (err) {
       setMensaje(err.response?.data?.error || 'Error al registrar la venta');
     }
+  }
+
+  function imprimirTicket() {
+    window.print();
   }
 
   if (cargando) {
@@ -190,7 +203,7 @@ export default function Ventas() {
 
           {mensaje && <p className="text-xs text-amber-400 mb-3">{mensaje}</p>}
 
-          <button
+                    <button
             onClick={confirmarVenta}
             disabled={carrito.length === 0 || totalPagos !== total}
             className="w-full bg-[#c9a227] hover:bg-[#b8931f] text-[#1a1815] font-medium py-2.5 text-sm disabled:opacity-40"
@@ -199,6 +212,22 @@ export default function Ventas() {
           </button>
         </div>
       </div>
+
+      {ticketData && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 print:bg-white print:relative">
+          <div className="bg-[#1a1815] p-4 max-h-[90vh] overflow-auto print:bg-white print:p-0 print:max-h-none">
+            <div className="print:hidden flex justify-between items-center mb-4 gap-4">
+              <button onClick={imprimirTicket} className="bg-[#c9a227] text-[#1a1815] px-4 py-2 text-sm font-medium">
+                Imprimir ticket
+              </button>
+              <button onClick={() => setTicketData(null)} className="text-[#8a8478] text-sm hover:text-[#f5f1e8]">
+                Cerrar
+              </button>
+            </div>
+            <Ticket venta={ticketData.venta} versiculo={ticketData.versiculo} />
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }
