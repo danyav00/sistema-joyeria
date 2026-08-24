@@ -28,22 +28,40 @@ export default function Mayoristas() {
       alert(err.response?.data?.error || 'Error al crear el mayorista');
     }
   }
+  
+  async function revisarInactivos() {
+    if (!confirm('¿Revisar y suspender mayoristas con más de 30 días sin comprar?')) return;
+    try {
+      const res = await api.post('/mayoristas/revisar-inactivos');
+      alert(res.data.mensaje);
+      cargarDatos();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Error al revisar mayoristas');
+    }
+  }
 
   return (
     <Layout>
       <div className="p-8" style={{ fontFamily: "'Inter', sans-serif" }}>
-        <div className="flex items-center justify-between mb-6">
+               <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl text-[#f5f1e8]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
             Mayoristas
           </h2>
-          <button
-            onClick={() => setMostrarForm(!mostrarForm)}
-            className="bg-[#c9a227] hover:bg-[#b8931f] text-[#1a1815] font-medium px-4 py-2 text-sm transition-colors"
-          >
-            {mostrarForm ? 'Cancelar' : '+ Nuevo mayorista'}
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={revisarInactivos}
+              className="border border-[#c9a227] text-[#c9a227] px-4 py-2 text-sm hover:bg-[#c9a227]/10 transition-colors"
+            >
+              Revisar inactivos
+            </button>
+            <button
+              onClick={() => setMostrarForm(!mostrarForm)}
+              className="bg-[#c9a227] hover:bg-[#b8931f] text-[#1a1815] font-medium px-4 py-2 text-sm transition-colors"
+            >
+              {mostrarForm ? 'Cancelar' : '+ Nuevo mayorista'}
+            </button>
+          </div>
         </div>
-
         {mostrarForm && (
           <form onSubmit={crearMayorista} className="border border-[#2a251c] p-5 mb-6 grid grid-cols-3 gap-4">
             <input placeholder="Número de cliente" value={form.numeroCliente} onChange={(e) => setForm({ ...form, numeroCliente: e.target.value })}

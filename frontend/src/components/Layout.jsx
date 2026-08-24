@@ -12,6 +12,7 @@ const menuItems = [
   { path: '/cortes', label: 'Cortes', roles: ['ADMINISTRADOR'] },
   { path: '/reportes', label: 'Reportes', roles: ['ADMINISTRADOR', 'SOCIO'] },
   { path: '/usuarios', label: 'Usuarios', roles: ['ADMINISTRADOR'] },
+    { path: '/auditoria', label: 'Auditoría', roles: ['ADMINISTRADOR'] },
 ];
 
 export default function Layout({ children }) {

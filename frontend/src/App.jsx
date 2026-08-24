@@ -10,6 +10,7 @@ import Gastos from './pages/Gastos';
 import Cortes from './pages/Cortes';
 import Reportes from './pages/Reportes';
 import Usuarios from './pages/Usuarios';
+import Auditoria from './pages/Auditoria';
 
 function RutaProtegida({ children }) {
   const { usuario } = useAuth();
@@ -22,14 +23,14 @@ function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route
-        path="/inventario"
+        path="/dashboard"
         element={
           <RutaProtegida>
-            <Inventario />
+            <Dashboard />
           </RutaProtegida>
         }
       />
-            <Route
+      <Route
         path="/inventario"
         element={
           <RutaProtegida>
@@ -38,14 +39,6 @@ function App() {
         }
       />
       <Route
-        path="/dashboard"
-        element={
-          <RutaProtegida>
-            <Dashboard />
-          </RutaProtegida>
-        }
-      />
-            <Route
         path="/ventas"
         element={
           <RutaProtegida>
@@ -53,7 +46,7 @@ function App() {
           </RutaProtegida>
         }
       />
-            <Route
+      <Route
         path="/apartados"
         element={
           <RutaProtegida>
@@ -61,7 +54,7 @@ function App() {
           </RutaProtegida>
         }
       />
-            <Route
+      <Route
         path="/mayoristas"
         element={
           <RutaProtegida>
@@ -69,7 +62,7 @@ function App() {
           </RutaProtegida>
         }
       />
-            <Route
+      <Route
         path="/gastos"
         element={
           <RutaProtegida>
@@ -77,7 +70,7 @@ function App() {
           </RutaProtegida>
         }
       />
-            <Route
+      <Route
         path="/cortes"
         element={
           <RutaProtegida>
@@ -85,7 +78,7 @@ function App() {
           </RutaProtegida>
         }
       />
-            <Route
+      <Route
         path="/reportes"
         element={
           <RutaProtegida>
@@ -93,11 +86,19 @@ function App() {
           </RutaProtegida>
         }
       />
-            <Route
+      <Route
         path="/usuarios"
         element={
           <RutaProtegida>
             <Usuarios />
+          </RutaProtegida>
+        }
+      />
+      <Route
+        path="/auditoria"
+        element={
+          <RutaProtegida>
+            <Auditoria />
           </RutaProtegida>
         }
       />

@@ -11,6 +11,9 @@ export default function Usuarios() {
   const [mostrarCambioPass, setMostrarCambioPass] = useState(false);
   const [formPass, setFormPass] = useState({ contrasenaActual: '', contrasenaNueva: '' });
   const [mensajePass, setMensajePass] = useState('');
+  
+  const [editando, setEditando] = useState(null);
+  const [formEdicion, setFormEdicion] = useState({ nombre: '', rol: '' });
 
   function cargarDatos() {
     setCargando(true);
@@ -51,6 +54,21 @@ export default function Usuarios() {
       cargarDatos();
     } catch (err) {
       alert(err.response?.data?.error || 'Error al actualizar el usuario');
+    }
+  }
+  
+  function iniciarEdicion(u) {
+    setEditando(u.id);
+    setFormEdicion({ nombre: u.nombre, rol: u.rol });
+  }
+
+  async function guardarEdicion(u) {
+    try {
+      await api.put(`/usuarios/${u.id}`, { nombre: formEdicion.nombre, rol: formEdicion.rol, activo: u.activo });
+      setEditando(null);
+      cargarDatos();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Error al editar el usuario');
     }
   }
   
@@ -138,22 +156,58 @@ export default function Usuarios() {
               </tr>
             </thead>
             <tbody>
-              {usuarios.map((u) => (
+                           {usuarios.map((u) => (
                 <tr key={u.id} className="border-b border-[#2a251c]/50">
-                  <td className="py-3 text-[#f5f1e8]">{u.nombre}</td>
-                  <td className="py-3 text-[#8a8478]">{u.usuario}</td>
-                  <td className="py-3 text-[#8a8478]">{u.rol}</td>
-                  <td className={`py-3 ${u.activo ? 'text-green-400' : 'text-red-400'}`}>
-                    {u.activo ? 'Activo' : 'Inactivo'}
-                  </td>
-                                    <td className="py-3 flex gap-3">
-                    <button onClick={() => cambiarActivo(u)} className="text-xs text-[#c9a227] hover:underline">
-                      {u.activo ? 'Desactivar' : 'Activar'}
-                    </button>
-                    <button onClick={() => resetearContrasena(u)} className="text-xs text-[#8a8478] hover:text-[#c9a227] hover:underline">
-                      Restablecer contraseña
-                    </button>
-                  </td>
+                  {editando === u.id ? (
+                    <>
+                      <td className="py-2">
+                        <input
+                          value={formEdicion.nombre}
+                          onChange={(e) => setFormEdicion({ ...formEdicion, nombre: e.target.value })}
+                          className="bg-transparent border border-[#3a352c] text-[#f5f1e8] text-xs px-2 py-1 w-full"
+                        />
+                      </td>
+                      <td className="py-3 text-[#8a8478]">{u.usuario}</td>
+                      <td className="py-2">
+                        <select
+                          value={formEdicion.rol}
+                          onChange={(e) => setFormEdicion({ ...formEdicion, rol: e.target.value })}
+                          className="bg-[#1a1815] border border-[#3a352c] text-[#f5f1e8] text-xs px-2 py-1"
+                        >
+                          <option value="EMPLEADO">Empleado</option>
+                          <option value="ADMINISTRADOR">Administrador</option>
+                          <option value="SOCIO">Socio</option>
+                        </select>
+                      </td>
+                      <td className={`py-3 ${u.activo ? 'text-green-400' : 'text-red-400'}`}>
+                        {u.activo ? 'Activo' : 'Inactivo'}
+                      </td>
+                      <td className="py-3 flex gap-3">
+                        <button onClick={() => guardarEdicion(u)} className="text-xs text-[#c9a227]">Guardar</button>
+                        <button onClick={() => setEditando(null)} className="text-xs text-red-400">Cancelar</button>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="py-3 text-[#f5f1e8]">{u.nombre}</td>
+                      <td className="py-3 text-[#8a8478]">{u.usuario}</td>
+                      <td className="py-3 text-[#8a8478]">{u.rol}</td>
+                      <td className={`py-3 ${u.activo ? 'text-green-400' : 'text-red-400'}`}>
+                        {u.activo ? 'Activo' : 'Inactivo'}
+                      </td>
+                      <td className="py-3 flex gap-3">
+                        <button onClick={() => cambiarActivo(u)} className="text-xs text-[#c9a227] hover:underline">
+                          {u.activo ? 'Desactivar' : 'Activar'}
+                        </button>
+                        <button onClick={() => iniciarEdicion(u)} className="text-xs text-[#8a8478] hover:text-[#c9a227] hover:underline">
+                          Editar
+                        </button>
+                        <button onClick={() => resetearContrasena(u)} className="text-xs text-[#8a8478] hover:text-[#c9a227] hover:underline">
+                          Restablecer contraseña
+                        </button>
+                      </td>
+                    </>
+                  )}
                 </tr>
               ))}
             </tbody>
