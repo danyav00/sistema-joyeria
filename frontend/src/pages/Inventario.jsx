@@ -17,6 +17,9 @@ export default function Inventario() {
   const [ajustando, setAjustando] = useState(null);
   const [cantidadAjuste, setCantidadAjuste] = useState('');
 
+  const [editando, setEditando] = useState(null);
+  const [formEdicion, setFormEdicion] = useState({ material: '', codigoPrecioId: '' });
+
   function cargarDatos() {
     setCargando(true);
     Promise.all([api.get('/productos'), api.get('/codigos-precio')])
@@ -56,6 +59,24 @@ export default function Inventario() {
       cargarDatos();
     } catch (err) {
       alert(err.response?.data?.error || 'Error al ajustar inventario');
+    }
+  }
+
+  function iniciarEdicion(p) {
+    setEditando(p.id);
+    setFormEdicion({ material: p.material, codigoPrecioId: p.codigoPrecioId });
+  }
+
+  async function guardarEdicion(productoId) {
+    try {
+      await api.put(`/productos/${productoId}`, {
+        material: formEdicion.material,
+        codigoPrecioId: Number(formEdicion.codigoPrecioId),
+      });
+      setEditando(null);
+      cargarDatos();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Error al editar el producto');
     }
   }
 
@@ -104,7 +125,7 @@ export default function Inventario() {
 
             <select value={form.material} onChange={(e) => setForm({ ...form, material: e.target.value })}
               className="bg-[#1a1815] border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227]">
-                            <option value="ORO">Oro</option>
+              <option value="ORO">Oro</option>
               <option value="PLATA">Plata</option>
               <option value="ORO_LAMINADO">Oro laminado</option>
               <option value="ACERO">Acero</option>
@@ -135,7 +156,7 @@ export default function Inventario() {
                 <th className="pb-3">Precio</th>
                 <th className="pb-3">Existencia</th>
                 <th className="pb-3">Estado</th>
-                {usuario?.rol === 'ADMINISTRADOR' && <th className="pb-3">Acción</th>}
+                {usuario?.rol === 'ADMINISTRADOR' && <th className="pb-3">Acciones</th>}
               </tr>
             </thead>
             <tbody>
@@ -143,13 +164,52 @@ export default function Inventario() {
                 <tr key={p.id} className="border-b border-[#2a251c]/50">
                   <td className="py-3 text-[#f5f1e8]">{p.sku}</td>
                   <td className="py-3 text-[#f5f1e8]">{p.nombre}</td>
-                  <td className="py-3 text-[#8a8478]">{p.material}</td>
-                  <td className="py-3 text-[#c9a227]">${Number(p.codigoPrecio.precio).toFixed(2)}</td>
+
+                  {editando === p.id ? (
+                    <>
+                      <td className="py-2">
+                        <select
+                          value={formEdicion.material}
+                          onChange={(e) => setFormEdicion({ ...formEdicion, material: e.target.value })}
+                          className="bg-[#1a1815] border border-[#3a352c] text-[#f5f1e8] text-xs px-2 py-1"
+                        >
+                          <option value="ORO">Oro</option>
+                          <option value="PLATA">Plata</option>
+                          <option value="ORO_LAMINADO">Oro laminado</option>
+                          <option value="ACERO">Acero</option>
+                          <option value="OTRO">Otro</option>
+                        </select>
+                      </td>
+                      <td className="py-2">
+                        <select
+                          value={formEdicion.codigoPrecioId}
+                          onChange={(e) => setFormEdicion({ ...formEdicion, codigoPrecioId: e.target.value })}
+                          className="bg-[#1a1815] border border-[#3a352c] text-[#f5f1e8] text-xs px-2 py-1"
+                        >
+                          {codigos.map((c) => (
+                            <option key={c.id} value={c.id}>{c.codigo} — ${c.precio}</option>
+                          ))}
+                        </select>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="py-3 text-[#8a8478]">{p.material}</td>
+                      <td className="py-3 text-[#c9a227]">${Number(p.codigoPrecio.precio).toFixed(2)}</td>
+                    </>
+                  )}
+
                   <td className="py-3 text-[#f5f1e8]">{p.existencia}</td>
                   <td className={`py-3 ${estadoColor[p.estado]}`}>{p.estado}</td>
+
                   {usuario?.rol === 'ADMINISTRADOR' && (
                     <td className="py-3">
-                      {ajustando === p.id ? (
+                      {editando === p.id ? (
+                        <div className="flex gap-2">
+                          <button onClick={() => guardarEdicion(p.id)} className="text-xs text-[#c9a227]">Guardar</button>
+                          <button onClick={() => setEditando(null)} className="text-xs text-red-400">Cancelar</button>
+                        </div>
+                      ) : ajustando === p.id ? (
                         <div className="flex gap-1 items-center">
                           <input
                             type="number"
@@ -162,9 +222,14 @@ export default function Inventario() {
                           <button onClick={() => { setAjustando(null); setCantidadAjuste(''); }} className="text-xs text-red-400">✕</button>
                         </div>
                       ) : (
-                        <button onClick={() => setAjustando(p.id)} className="text-xs text-[#c9a227] hover:underline">
-                          Ajustar
-                        </button>
+                        <div className="flex gap-3">
+                          <button onClick={() => setAjustando(p.id)} className="text-xs text-[#c9a227] hover:underline">
+                            Ajustar
+                          </button>
+                          <button onClick={() => iniciarEdicion(p)} className="text-xs text-[#8a8478] hover:text-[#c9a227] hover:underline">
+                            Editar
+                          </button>
+                        </div>
                       )}
                     </td>
                   )}
