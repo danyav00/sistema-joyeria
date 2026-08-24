@@ -11,6 +11,8 @@ export default function Ventas() {
   const [cargando, setCargando] = useState(true);
   const [mensaje, setMensaje] = useState('');
   const [ticketData, setTicketData] = useState(null);
+  const [busquedaSku, setBusquedaSku] = useState('');
+  const [mensajeBusqueda, setMensajeBusqueda] = useState('');
 
   useEffect(() => {
     Promise.all([api.get('/turnos/activo'), api.get('/productos?estado=DISPONIBLE')])
@@ -46,6 +48,23 @@ export default function Ventas() {
     }
   }
 
+  function buscarPorSku(e) {
+    e.preventDefault();
+    setMensajeBusqueda('');
+    const skuLimpio = busquedaSku.trim().toLowerCase();
+    if (!skuLimpio) return;
+
+    const encontrado = productos.find((p) => p.sku.toLowerCase() === skuLimpio);
+
+    if (!encontrado) {
+      setMensajeBusqueda('Producto no encontrado o no disponible');
+      return;
+    }
+
+    agregarAlCarrito(encontrado);
+    setBusquedaSku('');
+  }
+
   function quitarDelCarrito(productoId) {
     setCarrito(carrito.filter((item) => item.productoId !== productoId));
   }
@@ -63,7 +82,7 @@ export default function Ventas() {
     setPagos([...pagos, { metodoPago: 'EFECTIVO', monto: '' }]);
   }
 
-    async function confirmarVenta() {
+  async function confirmarVenta() {
     setMensaje('');
     try {
       const resVenta = await api.post('/ventas', {
@@ -123,9 +142,25 @@ export default function Ventas() {
     <Layout>
       <div className="p-8 grid grid-cols-3 gap-6" style={{ fontFamily: "'Inter', sans-serif" }}>
         <div className="col-span-2">
-          <h2 className="text-2xl text-[#f5f1e8] mb-6" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+          <h2 className="text-2xl text-[#f5f1e8] mb-4" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
             Punto de Venta
           </h2>
+
+          <form onSubmit={buscarPorSku} className="flex gap-2 mb-6">
+            <input
+              type="text"
+              placeholder="Escanea o escribe el SKU..."
+              value={busquedaSku}
+              onChange={(e) => setBusquedaSku(e.target.value)}
+              autoFocus
+              className="flex-1 bg-transparent border border-[#3a352c] focus:border-[#c9a227] text-[#f5f1e8] px-4 py-2.5 text-sm outline-none"
+            />
+            <button type="submit" className="bg-[#c9a227] hover:bg-[#b8931f] text-[#1a1815] font-medium px-5 py-2.5 text-sm">
+              Agregar
+            </button>
+          </form>
+          {mensajeBusqueda && <p className="text-red-400 text-xs -mt-4 mb-4">{mensajeBusqueda}</p>}
+
           <div className="grid grid-cols-2 gap-3">
             {productos.map((p) => (
               <button
@@ -203,7 +238,7 @@ export default function Ventas() {
 
           {mensaje && <p className="text-xs text-amber-400 mb-3">{mensaje}</p>}
 
-                    <button
+          <button
             onClick={confirmarVenta}
             disabled={carrito.length === 0 || totalPagos !== total}
             className="w-full bg-[#c9a227] hover:bg-[#b8931f] text-[#1a1815] font-medium py-2.5 text-sm disabled:opacity-40"
