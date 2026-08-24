@@ -8,6 +8,7 @@ const menuItems = [
   { path: '/inventario', label: 'Inventario', roles: ['ADMINISTRADOR', 'EMPLEADO', 'SOCIO'] },
   { path: '/apartados', label: 'Apartados', roles: ['ADMINISTRADOR', 'EMPLEADO'] },
   { path: '/mayoristas', label: 'Mayoristas', roles: ['ADMINISTRADOR', 'EMPLEADO'] },
+    { path: '/creditos-mayorista', label: 'Créditos Mayorista', roles: ['ADMINISTRADOR', 'EMPLEADO'] },
   { path: '/gastos', label: 'Gastos', roles: ['ADMINISTRADOR', 'EMPLEADO'] },
   { path: '/cortes', label: 'Cortes', roles: ['ADMINISTRADOR'] },
   { path: '/reportes', label: 'Reportes', roles: ['ADMINISTRADOR', 'SOCIO'] },

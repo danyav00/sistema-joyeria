@@ -31,22 +31,27 @@ async function abrirCredito(req, res) {
 
         if (!producto) throw new Error(`Producto ${item.productoId} no encontrado`);
         if (producto.estado !== 'DISPONIBLE') throw new Error(`Producto ${producto.nombre} no esta disponible`);
+        if (producto.existencia < 1) throw new Error(`Producto ${producto.nombre} sin existencia disponible`);
 
         const precio = Number(producto.codigoPrecio.precio);
         totalCredito += precio;
 
         productosData.push({ productoId: producto.id, precioAlMomento: precio });
 
+        const nuevaExistencia = producto.existencia - 1;
         await tx.producto.update({
           where: { id: producto.id },
-          data: { estado: 'APARTADO' },
+          data: {
+            existencia: nuevaExistencia,
+            estado: nuevaExistencia === 0 ? 'APARTADO' : 'DISPONIBLE',
+          },
         });
 
         await tx.movimientoInventario.create({
           data: {
             productoId: producto.id,
             tipoMovimiento: 'AJUSTE',
-            cantidad: 0,
+            cantidad: -1,
             usuarioId: req.usuario.id,
             nota: 'Entregado a mayorista en consignacion',
           },
@@ -139,7 +144,7 @@ async function liquidarCredito(req, res) {
       const porcentajeVendido = Number(totalVendido) / Number(credito.totalCredito);
       const cumpleMinimo = porcentajeVendido >= PORCENTAJE_MINIMO_VENTA;
 
-      let totalAPagar = Number(totalVendido);
+      let totalAPagar = 0;
       const idsDevueltos = productosDevueltos || [];
 
       for (const detalle of credito.productos) {
@@ -153,9 +158,13 @@ async function liquidarCredito(req, res) {
             throw new Error(`El producto ${detalle.producto.nombre} no es Oro Laminado, no se acepta devolucion`);
           }
 
+          const productoDevuelto = await tx.producto.findUnique({ where: { id: detalle.productoId } });
           await tx.producto.update({
             where: { id: detalle.productoId },
-            data: { estado: 'DISPONIBLE' },
+            data: {
+              existencia: productoDevuelto.existencia + 1,
+              estado: 'DISPONIBLE',
+            },
           });
 
           await tx.creditoMayoristaProducto.update({
@@ -167,17 +176,13 @@ async function liquidarCredito(req, res) {
             data: {
               productoId: detalle.productoId,
               tipoMovimiento: 'DEVOLUCION',
-              cantidad: 0,
+              cantidad: 1,
               usuarioId: req.usuario.id,
               nota: 'Devolucion de credito de mayorista',
             },
           });
         } else {
-          totalAPagar += Number(detalle.precioAlMomento) - 0;
-          await tx.producto.update({
-            where: { id: detalle.productoId },
-            data: { estado: 'VENDIDO' },
-          });
+          totalAPagar += Number(detalle.precioAlMomento);
         }
       }
 

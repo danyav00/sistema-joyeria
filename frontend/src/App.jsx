@@ -11,6 +11,7 @@ import Cortes from './pages/Cortes';
 import Reportes from './pages/Reportes';
 import Usuarios from './pages/Usuarios';
 import Auditoria from './pages/Auditoria';
+import CreditosMayorista from './pages/CreditosMayorista';
 
 function RutaProtegida({ children }) {
   const { usuario } = useAuth();
@@ -99,6 +100,14 @@ function App() {
         element={
           <RutaProtegida>
             <Auditoria />
+          </RutaProtegida>
+        }
+      />
+            <Route
+        path="/creditos-mayorista"
+        element={
+          <RutaProtegida>
+            <CreditosMayorista />
           </RutaProtegida>
         }
       />
