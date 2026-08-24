@@ -144,14 +144,15 @@ async function eliminarProducto(req, res) {
 
     await prisma.$transaction(async (tx) => {
       await tx.movimientoInventario.deleteMany({ where: { productoId: Number(id) } });
+      await tx.creditoMayoristaProducto.deleteMany({ where: { productoId: Number(id) } });
       await tx.producto.delete({ where: { id: Number(id) } });
     });
 
     res.json({ mensaje: 'Producto eliminado correctamente' });
   } catch (error) {
     console.error(error);
-    if (error.code === 'P2003') {
-      return res.status(400).json({ error: 'No se puede eliminar: el producto tiene ventas, apartados o creditos asociados' });
+    if (error.code === 'P2003' || error.code === 'P2039') {
+      return res.status(400).json({ error: 'No se puede eliminar: el producto tiene ventas o apartados asociados' });
     }
     res.status(500).json({ error: 'Error al eliminar el producto' });
   }
