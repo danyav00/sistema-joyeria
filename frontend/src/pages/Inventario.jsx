@@ -104,9 +104,10 @@ export default function Inventario() {
 
             <select value={form.material} onChange={(e) => setForm({ ...form, material: e.target.value })}
               className="bg-[#1a1815] border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227]">
-              <option value="ORO">Oro</option>
+                            <option value="ORO">Oro</option>
               <option value="PLATA">Plata</option>
               <option value="ORO_LAMINADO">Oro laminado</option>
+              <option value="ACERO">Acero</option>
               <option value="OTRO">Otro</option>
             </select>
 
