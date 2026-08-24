@@ -1,4 +1,5 @@
 const prisma = require('../utils/prisma');
+const ID_PRODUCTO_CARPETA = 1;
 
 async function crearMayorista(req, res) {
   try {
@@ -80,8 +81,26 @@ async function registrarCompra(req, res) {
       if (nuevoAcumulado >= 4000) {
         nuevoEstado = 'ACTIVO';
       }
-      if (monto >= 5000) {
+            if (monto >= 5000) {
         carpetaEntregada = true;
+
+        const carpeta = await tx.producto.findUnique({ where: { id: ID_PRODUCTO_CARPETA } });
+        if (carpeta && carpeta.existencia > 0) {
+          await tx.producto.update({
+            where: { id: ID_PRODUCTO_CARPETA },
+            data: { existencia: carpeta.existencia - 1 },
+          });
+
+          await tx.movimientoInventario.create({
+            data: {
+              productoId: ID_PRODUCTO_CARPETA,
+              tipoMovimiento: 'AJUSTE',
+              cantidad: -1,
+              usuarioId: req.usuario.id,
+              nota: `Carpeta entregada a mayorista por compra de $${monto}`,
+            },
+          });
+        }
       }
 
       const mayoristaActualizado = await tx.mayorista.update({
