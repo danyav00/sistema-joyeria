@@ -95,5 +95,27 @@ async function listarCortes(req, res) {
     res.status(500).json({ error: 'Error al listar cortes' });
   }
 }
+async function eliminarCorte(req, res) {
+  try {
+    const { id } = req.params;
 
-module.exports = { generarCorte, obtenerCorte, listarCortes };
+    await prisma.$transaction(async (tx) => {
+      const corte = await tx.corte.findUnique({ where: { id: Number(id) } });
+      if (!corte) throw new Error('Corte no encontrado');
+
+      await tx.corte.delete({ where: { id: Number(id) } });
+
+      await tx.turno.update({
+        where: { id: corte.turnoId },
+        data: { estado: 'ABIERTO', fechaCierre: null, horaCierre: null },
+      });
+    });
+
+    res.json({ mensaje: 'Corte eliminado correctamente, el turno se reabrio' });
+  } catch (error) {
+    console.error(error);
+    res.status(400).json({ error: error.message || 'Error al eliminar el corte' });
+  }
+}
+
+module.exports = { generarCorte, obtenerCorte, listarCortes, eliminarCorte };

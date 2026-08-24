@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 import api from '../services/api';
 import Layout from '../components/Layout';
+import { useAuth } from '../context/AuthContext';
 
 export default function Cortes() {
   const [turno, setTurno] = useState(null);
   const [cortes, setCortes] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [mensaje, setMensaje] = useState('');
+  const { usuario } = useAuth();
 
   function cargarDatos() {
     setCargando(true);
@@ -30,6 +32,16 @@ export default function Cortes() {
       cargarDatos();
     } catch (err) {
       setMensaje(err.response?.data?.error || 'Error al generar el corte');
+    }
+  }
+
+  async function eliminarCorte(id) {
+    if (!confirm('¿Eliminar este corte? El turno correspondiente se reabrira. Esta accion no se puede deshacer.')) return;
+    try {
+      await api.delete(`/cortes/${id}`);
+      cargarDatos();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Error al eliminar el corte');
     }
   }
 
@@ -60,12 +72,17 @@ export default function Cortes() {
                 <p className="text-[#f5f1e8] text-sm">{c.turno.tipo} — {new Date(c.fecha).toLocaleDateString('es-MX')}</p>
                 <p className="text-[#c9a227]">${Number(c.totalFinal).toFixed(2)}</p>
               </div>
-              <div className="grid grid-cols-4 gap-3 text-xs text-[#8a8478]">
+              <div className="grid grid-cols-4 gap-3 text-xs text-[#8a8478] mb-2">
                 <p>Ventas: ${Number(c.totalVentas).toFixed(2)}</p>
                 <p>Gastos: ${Number(c.totalGastos).toFixed(2)}</p>
                 <p>Efectivo: ${Number(c.totalEfectivo).toFixed(2)}</p>
                 <p>Tarjeta: ${Number(c.totalTarjeta).toFixed(2)}</p>
               </div>
+              {usuario?.rol === 'ADMINISTRADOR' && (
+                <button onClick={() => eliminarCorte(c.id)} className="text-xs text-red-400 hover:underline">
+                  Eliminar corte
+                </button>
+              )}
             </div>
           ))}
         </div>

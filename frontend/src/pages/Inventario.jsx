@@ -62,6 +62,16 @@ export default function Inventario() {
     }
   }
 
+  async function eliminarProducto(id, nombre) {
+    if (!confirm(`¿Eliminar el producto "${nombre}"? Esta accion no se puede deshacer.`)) return;
+    try {
+      await api.delete(`/productos/${id}`);
+      cargarDatos();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Error al eliminar el producto');
+    }
+  }
+
   function iniciarEdicion(p) {
     setEditando(p.id);
     setFormEdicion({ material: p.material, codigoPrecioId: p.codigoPrecioId });
@@ -228,6 +238,9 @@ export default function Inventario() {
                           </button>
                           <button onClick={() => iniciarEdicion(p)} className="text-xs text-[#8a8478] hover:text-[#c9a227] hover:underline">
                             Editar
+                          </button>
+                          <button onClick={() => eliminarProducto(p.id, p.nombre)} className="text-xs text-red-400 hover:underline">
+                            Eliminar
                           </button>
                         </div>
                       )}

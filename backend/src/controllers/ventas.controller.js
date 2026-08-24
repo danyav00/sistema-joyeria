@@ -136,5 +136,24 @@ async function obtenerVenta(req, res) {
     res.status(500).json({ error: 'Error al obtener la venta' });
   }
 }
+async function eliminarVenta(req, res) {
+  try {
+    const { id } = req.params;
 
-module.exports = { crearVenta, listarVentas, obtenerVenta };
+    await prisma.$transaction(async (tx) => {
+      await tx.ticket.deleteMany({ where: { ventaId: Number(id) } });
+      await tx.mayoristaCompra.deleteMany({ where: { ventaId: Number(id) } });
+      await tx.creditoMayorista.updateMany({ where: { ventaId: Number(id) }, data: { ventaId: null } });
+      await tx.ventaPago.deleteMany({ where: { ventaId: Number(id) } });
+      await tx.ventaDetalle.deleteMany({ where: { ventaId: Number(id) } });
+      await tx.venta.delete({ where: { id: Number(id) } });
+    });
+
+    res.json({ mensaje: 'Venta eliminada correctamente' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al eliminar la venta' });
+  }
+}
+
+module.exports = { crearVenta, listarVentas, obtenerVenta, eliminarVenta };
