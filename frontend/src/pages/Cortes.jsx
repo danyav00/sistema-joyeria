@@ -64,8 +64,10 @@ export default function Cortes() {
           <p className="text-[#8a8478] mb-6">No tienes un turno abierto actualmente.</p>
         )}
 
-        <h3 className="text-sm text-[#f5f1e8] uppercase tracking-wide mb-4">Historial de cortes</h3>
-        <div className="space-y-3">
+        {usuario?.rol === 'ADMINISTRADOR' && (
+          <>
+            <h3 className="text-sm text-[#f5f1e8] uppercase tracking-wide mb-4">Historial de cortes</h3>
+            <div className="space-y-3">
           {cortes.map((c) => (
             <div key={c.id} className="border border-[#2a251c] p-4">
               <div className="flex justify-between mb-2">
@@ -85,7 +87,9 @@ export default function Cortes() {
               )}
             </div>
           ))}
-        </div>
+                   </div>
+          </>
+        )}
       </div>
     </Layout>
   );

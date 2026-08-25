@@ -19,6 +19,7 @@ export default function Inventario() {
 
   const [editando, setEditando] = useState(null);
   const [formEdicion, setFormEdicion] = useState({ material: '', codigoPrecioId: '' });
+  const [busqueda, setBusqueda] = useState('');
 
   function cargarDatos() {
     setCargando(true);
@@ -96,6 +97,11 @@ export default function Inventario() {
     VENDIDO: 'text-[#8a8478]',
     CANCELADO: 'text-red-400',
   };
+  
+  const productosFiltrados = productos.filter((p) => {
+    const texto = busqueda.toLowerCase();
+    return p.sku.toLowerCase().includes(texto) || p.nombre.toLowerCase().includes(texto);
+  });
 
   return (
     <Layout>
@@ -154,6 +160,14 @@ export default function Inventario() {
           </form>
         )}
 
+        <input
+          type="text"
+          placeholder="Buscar por SKU o nombre..."
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          className="w-full bg-transparent border border-[#3a352c] focus:border-[#c9a227] text-[#f5f1e8] px-4 py-2.5 text-sm outline-none mb-4"
+        />
+
         {cargando ? (
           <p className="text-[#8a8478]">Cargando...</p>
         ) : (
@@ -170,7 +184,7 @@ export default function Inventario() {
               </tr>
             </thead>
             <tbody>
-              {productos.map((p) => (
+              {productosFiltrados.map((p) => (
                 <tr key={p.id} className="border-b border-[#2a251c]/50">
                   <td className="py-3 text-[#f5f1e8]">{p.sku}</td>
                   <td className="py-3 text-[#f5f1e8]">{p.nombre}</td>

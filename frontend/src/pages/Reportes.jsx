@@ -1,18 +1,27 @@
 import { useEffect, useState } from 'react';
 import api from '../services/api';
 import Layout from '../components/Layout';
+import { useAuth } from '../context/AuthContext';
 
 export default function Reportes() {
   const [periodo, setPeriodo] = useState('mensual');
   const [reporte, setReporte] = useState(null);
   const [cargando, setCargando] = useState(true);
+  const { usuario } = useAuth();
 
-    useEffect(() => {
+  useEffect(() => {
     setCargando(true);
     api.get(`/reportes/ventas?periodo=${periodo}`)
       .then((res) => setReporte(res.data))
       .finally(() => setCargando(false));
   }, [periodo]);
+
+  function recargar() {
+    setCargando(true);
+    api.get(`/reportes/ventas?periodo=${periodo}`)
+      .then((res) => setReporte(res.data))
+      .finally(() => setCargando(false));
+  }
 
   async function descargarExcel() {
     const respuesta = await api.get(`/reportes/ventas/excel?periodo=${periodo}`, { responseType: 'blob' });
@@ -23,6 +32,16 @@ export default function Reportes() {
     document.body.appendChild(link);
     link.click();
     link.remove();
+  }
+
+  async function eliminarVenta(id) {
+    if (!confirm('¿Eliminar esta venta? Esta accion no se puede deshacer y no regresa el inventario automaticamente.')) return;
+    try {
+      await api.delete(`/ventas/${id}`);
+      recargar();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Error al eliminar la venta');
+    }
   }
 
   return (
@@ -74,6 +93,7 @@ export default function Reportes() {
                   <th className="pb-3">Usuario</th>
                   <th className="pb-3">Tipo</th>
                   <th className="pb-3">Total</th>
+                  {usuario?.rol === 'ADMINISTRADOR' && <th className="pb-3">Acción</th>}
                 </tr>
               </thead>
               <tbody>
@@ -84,6 +104,13 @@ export default function Reportes() {
                     <td className="py-3 text-[#8a8478]">{v.usuario.nombre}</td>
                     <td className="py-3 text-[#8a8478]">{v.tipoVenta}</td>
                     <td className="py-3 text-[#c9a227]">${Number(v.total).toFixed(2)}</td>
+                    {usuario?.rol === 'ADMINISTRADOR' && (
+                      <td className="py-3">
+                        <button onClick={() => eliminarVenta(v.id)} className="text-xs text-red-400 hover:underline">
+                          Eliminar
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

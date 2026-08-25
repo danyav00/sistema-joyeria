@@ -10,7 +10,7 @@ const menuItems = [
   { path: '/mayoristas', label: 'Mayoristas', roles: ['ADMINISTRADOR', 'EMPLEADO'] },
     { path: '/creditos-mayorista', label: 'Créditos Mayorista', roles: ['ADMINISTRADOR', 'EMPLEADO'] },
   { path: '/gastos', label: 'Gastos', roles: ['ADMINISTRADOR', 'EMPLEADO'] },
-  { path: '/cortes', label: 'Cortes', roles: ['ADMINISTRADOR'] },
+  { path: '/cortes', label: 'Cortes', roles: ['ADMINISTRADOR', 'EMPLEADO'] },
   { path: '/reportes', label: 'Reportes', roles: ['ADMINISTRADOR', 'SOCIO'] },
   { path: '/usuarios', label: 'Usuarios', roles: ['ADMINISTRADOR'] },
     { path: '/auditoria', label: 'Auditoría', roles: ['ADMINISTRADOR'] },
