@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 import api from '../services/api';
 import Layout from '../components/Layout';
+import Ticket from '../components/Ticket';
 import { useAuth } from '../context/AuthContext';
 
 export default function Reportes() {
   const [periodo, setPeriodo] = useState('mensual');
   const [reporte, setReporte] = useState(null);
   const [cargando, setCargando] = useState(true);
+  const [ticketData, setTicketData] = useState(null);
   const { usuario } = useAuth();
 
   useEffect(() => {
@@ -42,6 +44,36 @@ export default function Reportes() {
     } catch (err) {
       alert(err.response?.data?.error || 'Error al eliminar la venta');
     }
+  }
+
+  async function verTicket(ventaId) {
+    try {
+      const resVenta = await api.get(`/ventas/${ventaId}`);
+      const resTickets = await api.get(`/tickets/venta/${ventaId}`);
+
+      let versiculo = '';
+      if (resTickets.data.length > 0) {
+        versiculo = '';
+      }
+
+      let ticketExistente = resTickets.data[0];
+      let datosTicket;
+
+      if (ticketExistente) {
+        datosTicket = { venta: resVenta.data, versiculo: '' };
+      } else {
+        const resNuevo = await api.post('/tickets', { ventaId, tipo: 'DIGITAL' });
+        datosTicket = { venta: resVenta.data, versiculo: resNuevo.data.versiculo };
+      }
+
+      setTicketData(datosTicket);
+    } catch (err) {
+      alert(err.response?.data?.error || 'Error al obtener el ticket');
+    }
+  }
+
+  function imprimirTicket() {
+    window.print();
   }
 
   return (
@@ -93,7 +125,7 @@ export default function Reportes() {
                   <th className="pb-3">Usuario</th>
                   <th className="pb-3">Tipo</th>
                   <th className="pb-3">Total</th>
-                  {usuario?.rol === 'ADMINISTRADOR' && <th className="pb-3">Acción</th>}
+                  <th className="pb-3">Acción</th>
                 </tr>
               </thead>
               <tbody>
@@ -104,13 +136,16 @@ export default function Reportes() {
                     <td className="py-3 text-[#8a8478]">{v.usuario.nombre}</td>
                     <td className="py-3 text-[#8a8478]">{v.tipoVenta}</td>
                     <td className="py-3 text-[#c9a227]">${Number(v.total).toFixed(2)}</td>
-                    {usuario?.rol === 'ADMINISTRADOR' && (
-                      <td className="py-3">
+                    <td className="py-3 flex gap-3">
+                      <button onClick={() => verTicket(v.id)} className="text-xs text-[#c9a227] hover:underline">
+                        Ver ticket
+                      </button>
+                      {usuario?.rol === 'ADMINISTRADOR' && (
                         <button onClick={() => eliminarVenta(v.id)} className="text-xs text-red-400 hover:underline">
                           Eliminar
                         </button>
-                      </td>
-                    )}
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -118,6 +153,22 @@ export default function Reportes() {
           </>
         )}
       </div>
+
+      {ticketData && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 print:bg-white print:relative">
+          <div className="bg-[#1a1815] p-4 max-h-[90vh] overflow-auto print:bg-white print:p-0 print:max-h-none">
+            <div className="print:hidden flex justify-between items-center mb-4 gap-4">
+              <button onClick={imprimirTicket} className="bg-[#c9a227] text-[#1a1815] px-4 py-2 text-sm font-medium">
+                Imprimir ticket
+              </button>
+              <button onClick={() => setTicketData(null)} className="text-[#8a8478] text-sm hover:text-[#f5f1e8]">
+                Cerrar
+              </button>
+            </div>
+            <Ticket venta={ticketData.venta} versiculo={ticketData.versiculo} />
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }
