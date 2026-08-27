@@ -16,6 +16,8 @@ export default function Ticket({ venta, versiculo }) {
     >
       <div style={{ textAlign: 'center', marginBottom: '8px' }}>
         <p style={{ fontSize: '14px', fontWeight: 'bold', margin: 0 }}>NIXCA JOYERÍA</p>
+        <p style={{ fontSize: '9px', margin: 0 }}>Plaza Galerías Las Torres, Isla 7</p>
+        <p style={{ fontSize: '9px', margin: '0 0 4px 0' }}>Tel: 4778063756</p>
         <p style={{ margin: 0 }}>Folio: {venta.folio}</p>
         <p style={{ margin: 0 }}>{fecha.toLocaleDateString('es-MX')} {fecha.toLocaleTimeString('es-MX')}</p>
         <p style={{ margin: 0 }}>Atendió: {venta.usuario?.nombre}</p>
