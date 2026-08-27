@@ -36,6 +36,8 @@ const auditoriaRoutes = require('./routes/auditoria.routes');
 app.use('/api/auditoria', auditoriaRoutes);
 const ticketsRoutes = require('./routes/tickets.routes');
 app.use('/api/tickets', ticketsRoutes);
+const devolucionesRoutes = require('./routes/devoluciones.routes');
+app.use('/api/devoluciones', devolucionesRoutes);
 
 app.get('/', (req, res) => {
   res.json({ mensaje: 'Servidor del Sistema Joyería funcionando correctamente' });

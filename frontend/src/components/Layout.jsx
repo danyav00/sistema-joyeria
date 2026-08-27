@@ -5,6 +5,7 @@ import logo from '../assets/logo.png';
 const menuItems = [
   { path: '/dashboard', label: 'Dashboard', roles: ['ADMINISTRADOR', 'EMPLEADO', 'SOCIO'] },
   { path: '/ventas', label: 'Punto de Venta', roles: ['ADMINISTRADOR', 'EMPLEADO'] },
+    { path: '/devoluciones', label: 'Devoluciones', roles: ['ADMINISTRADOR', 'EMPLEADO'] },
   { path: '/inventario', label: 'Inventario', roles: ['ADMINISTRADOR', 'EMPLEADO', 'SOCIO'] },
   { path: '/apartados', label: 'Apartados', roles: ['ADMINISTRADOR', 'EMPLEADO'] },
   { path: '/mayoristas', label: 'Mayoristas', roles: ['ADMINISTRADOR', 'EMPLEADO'] },

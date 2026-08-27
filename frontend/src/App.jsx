@@ -12,6 +12,7 @@ import Reportes from './pages/Reportes';
 import Usuarios from './pages/Usuarios';
 import Auditoria from './pages/Auditoria';
 import CreditosMayorista from './pages/CreditosMayorista';
+import Devoluciones from './pages/Devoluciones';
 
 function RutaProtegida({ children }) {
   const { usuario } = useAuth();
@@ -108,6 +109,14 @@ function App() {
         element={
           <RutaProtegida>
             <CreditosMayorista />
+          </RutaProtegida>
+        }
+      />
+            <Route
+        path="/devoluciones"
+        element={
+          <RutaProtegida>
+            <Devoluciones />
           </RutaProtegida>
         }
       />

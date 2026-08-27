@@ -45,6 +45,7 @@ turnos          Turno[]
   cortes          Corte[]
   auditorias      Auditoria[]
   creditosMayorista CreditoMayorista[]
+  devoluciones      Devolucion[]
 
   @@map("usuarios")
 }
@@ -117,6 +118,8 @@ model Producto {
   ventaDetalles   VentaDetalle[]
   apartados       Apartado[]
   creditoDetalles CreditoMayoristaProducto[]
+  devolucionesComoOriginal Devolucion[] @relation("ProductoDevuelto")
+  devolucionesComoNuevo    Devolucion[] @relation("ProductoNuevo")
 
   @@map("productos")
 }
@@ -181,6 +184,7 @@ model Venta {
   compraMayorista MayoristaCompra?
   tickets         Ticket[]
   credito         CreditoMayorista?
+  devolucionesComoOriginal Devolucion[] @relation("VentaOriginalDevolucion")
 
   @@map("ventas")
 }
@@ -383,4 +387,20 @@ model CreditoMayoristaProducto {
   vendido         Boolean          @default(false)
 
   @@map("credito_mayorista_productos")
+}
+model Devolucion {
+  id                Int      @id @default(autoincrement())
+  folio             String   @unique
+  ventaOriginalId   Int
+  ventaOriginal     Venta    @relation("VentaOriginalDevolucion", fields: [ventaOriginalId], references: [id])
+  productoDevueltoId Int
+  productoDevuelto  Producto @relation("ProductoDevuelto", fields: [productoDevueltoId], references: [id])
+  productoNuevoId   Int
+  productoNuevo     Producto @relation("ProductoNuevo", fields: [productoNuevoId], references: [id])
+  diferenciaPagada  Decimal  @db.Decimal(10, 2)
+  usuarioId         Int
+  usuario           Usuario  @relation(fields: [usuarioId], references: [id])
+  fecha             DateTime @default(now())
+
+  @@map("devoluciones")
 }
