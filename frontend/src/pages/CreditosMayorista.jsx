@@ -21,6 +21,11 @@ export default function CreditosMayorista() {
   const [mensajeLiquidacion, setMensajeLiquidacion] = useState('');
 
   const [ticketCredito, setTicketCredito] = useState(null);
+    const [expandido, setExpandido] = useState({});
+
+  function toggleExpandido(creditoId) {
+    setExpandido((prev) => ({ ...prev, [creditoId]: !prev[creditoId] }));
+  }
 
   function cargarDatos() {
     setCargando(true);
@@ -269,27 +274,35 @@ export default function CreditosMayorista() {
           <div className="space-y-4">
             {creditosFiltrados.map((c) => (
               <div key={c.id} className="border border-[#2a251c] p-4">
-                <div className="flex justify-between items-center mb-2">
+                <button
+                  onClick={() => toggleExpandido(c.id)}
+                  className="flex justify-between items-center w-full text-left mb-2"
+                >
                   <div>
                     <p className="text-[#f5f1e8] text-sm">{c.folio} — {c.mayorista?.nombreCompleto}</p>
                     <p className="text-[#8a8478] text-xs">
-                      Total: ${Number(c.totalCredito).toFixed(2)} • Límite: {new Date(c.fechaLimite).toLocaleDateString('es-MX')}
+                      Total: ${Number(c.totalCredito).toFixed(2)} • {c.productos.length} producto(s) • Límite: {new Date(c.fechaLimite).toLocaleDateString('es-MX')}
                     </p>
                   </div>
-                  <span className={`text-xs ${estadoColor[c.estado]}`}>{c.estado}</span>
-                </div>
+                  <div className="flex items-center gap-3">
+                    <span className={`text-xs ${estadoColor[c.estado]}`}>{c.estado}</span>
+                    <span className="text-[#8a8478] text-xs">{expandido[c.id] ? '▲' : '▼'}</span>
+                  </div>
+                </button>
 
-                <div className="text-xs text-[#8a8478] mb-2">
-                  {c.productos.map((p) => (
-                    <p key={p.id}>
-                      {p.producto.sku} — {p.producto.nombre} — ${Number(p.precioAlMomento).toFixed(2)}
-                      {p.devuelto && <span className="text-green-400"> (devuelto)</span>}
-                      {p.vendido && <span className="text-blue-400"> (vendido)</span>}
-                    </p>
-                  ))}
-                </div>
+                {expandido[c.id] && (
+                  <div className="text-xs text-[#8a8478] mb-2 max-h-40 overflow-auto border-t border-[#2a251c] pt-2">
+                    {c.productos.map((p) => (
+                      <p key={p.id}>
+                        {p.producto.sku} — {p.producto.nombre} — ${Number(p.precioAlMomento).toFixed(2)}
+                        {p.devuelto && <span className="text-green-400"> (devuelto)</span>}
+                        {p.vendido && <span className="text-blue-400"> (vendido)</span>}
+                      </p>
+                    ))}
+                  </div>
+                )}
 
-                {c.estado === 'ACTIVO' && (
+                {expandido[c.id] && c.estado === 'ACTIVO' && (
                   liquidando === c.id ? (
                     <div className="border-t border-[#2a251c] pt-3 mt-3">
                       <p className="text-xs text-[#8a8478] uppercase mb-2">
