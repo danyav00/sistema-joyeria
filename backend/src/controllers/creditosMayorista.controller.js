@@ -1,7 +1,7 @@
 const prisma = require('../utils/prisma');
 const { registrarAuditoria } = require('../utils/auditoria');
 
-const PORCENTAJE_MINIMO_VENTA = 0.4;
+const PORCENTAJE_MINIMO_VENTA = 0.5;
 const DIAS_LIMITE = 45;
 const MONTO_MINIMO_CREDITO = 2000;
 
@@ -30,10 +30,10 @@ async function abrirCredito(req, res) {
           include: { codigoPrecio: true },
         });
 
-        if (!producto) throw new Error(`Producto ${item.productoId} no encontrado`);
+               if (!producto) throw new Error(`Producto ${item.productoId} no encontrado`);
         if (producto.estado !== 'DISPONIBLE') throw new Error(`Producto ${producto.nombre} no esta disponible`);
         if (producto.existencia < 1) throw new Error(`Producto ${producto.nombre} sin existencia disponible`);
-
+        if (producto.material !== 'ORO_LAMINADO') throw new Error(`Producto ${producto.nombre} no es Oro Laminado, no se acepta en creditos`);
         const precio = Number(producto.codigoPrecio.precio);
         totalCredito += precio;
 

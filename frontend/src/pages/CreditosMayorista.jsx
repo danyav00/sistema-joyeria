@@ -9,8 +9,10 @@ export default function CreditosMayorista() {
   const [cargando, setCargando] = useState(true);
   const [mostrarForm, setMostrarForm] = useState(false);
   const [mensaje, setMensaje] = useState('');
+  const [busquedaMayorista, setBusquedaMayorista] = useState('');
 
-  const [form, setForm] = useState({ mayoristaId: '', productosSeleccionados: [] });
+  const [form, setForm] = useState({ mayoristaId: '', productosSeleccionados: {} });
+  const [busquedaProducto, setBusquedaProducto] = useState('');
 
   const [liquidando, setLiquidando] = useState(null);
   const [formLiquidacion, setFormLiquidacion] = useState({
@@ -24,7 +26,7 @@ export default function CreditosMayorista() {
     Promise.all([
       api.get('/creditos-mayorista'),
       api.get('/mayoristas'),
-      api.get('/productos?estado=DISPONIBLE'),
+      api.get('/productos?estado=DISPONIBLE&material=ORO_LAMINADO'),
     ])
       .then(([resCreditos, resMayoristas, resProductos]) => {
         setCreditos(resCreditos.data);
@@ -38,14 +40,33 @@ export default function CreditosMayorista() {
     cargarDatos();
   }, []);
 
-  function toggleProducto(productoId) {
+  function toggleProducto(productoId, maxExistencia) {
     setForm((prev) => {
-      const yaEsta = prev.productosSeleccionados.includes(productoId);
+      const nuevo = { ...prev.productosSeleccionados };
+      if (nuevo[productoId]) {
+        delete nuevo[productoId];
+      } else {
+        nuevo[productoId] = 1;
+      }
+      return { ...prev, productosSeleccionados: nuevo };
+    });
+  }
+
+  function actualizarCantidadProducto(productoId, cantidadTexto) {
+    setForm((prev) => ({
+      ...prev,
+      productosSeleccionados: { ...prev.productosSeleccionados, [productoId]: cantidadTexto },
+    }));
+  }
+
+  function validarCantidadProducto(productoId, maxExistencia) {
+    setForm((prev) => {
+      let cantidadFinal = parseInt(prev.productosSeleccionados[productoId], 10);
+      if (isNaN(cantidadFinal) || cantidadFinal < 1) cantidadFinal = 1;
+      if (cantidadFinal > maxExistencia) cantidadFinal = maxExistencia;
       return {
         ...prev,
-        productosSeleccionados: yaEsta
-          ? prev.productosSeleccionados.filter((id) => id !== productoId)
-          : [...prev.productosSeleccionados, productoId],
+        productosSeleccionados: { ...prev.productosSeleccionados, [productoId]: cantidadFinal },
       };
     });
   }
@@ -54,11 +75,14 @@ export default function CreditosMayorista() {
     e.preventDefault();
     setMensaje('');
     try {
+      const productosArray = Object.entries(form.productosSeleccionados).flatMap(
+        ([productoId, cantidad]) => Array(cantidad).fill({ productoId: Number(productoId) })
+      );
       await api.post('/creditos-mayorista', {
         mayoristaId: form.mayoristaId,
-        productos: form.productosSeleccionados.map((id) => ({ productoId: id })),
+        productos: productosArray,
       });
-      setForm({ mayoristaId: '', productosSeleccionados: [] });
+      setForm({ mayoristaId: '', productosSeleccionados: {} });
       setMostrarForm(false);
       cargarDatos();
     } catch (err) {
@@ -107,15 +131,29 @@ export default function CreditosMayorista() {
     }
   }
 
-  const totalSeleccionado = productos
-    .filter((p) => form.productosSeleccionados.includes(p.id))
-    .reduce((suma, p) => suma + Number(p.codigoPrecio.precio), 0);
+  const totalSeleccionado = Object.entries(form.productosSeleccionados).reduce((suma, [productoId, cantidad]) => {
+    const producto = productos.find((p) => p.id === Number(productoId));
+    return producto ? suma + Number(producto.codigoPrecio.precio) * cantidad : suma;
+  }, 0);
+
+  const productosFiltrados = productos.filter((p) => {
+    const texto = busquedaProducto.toLowerCase();
+    return p.sku.toLowerCase().includes(texto) || p.nombre.toLowerCase().includes(texto);
+  });
 
   const estadoColor = {
     ACTIVO: 'text-amber-400',
     LIQUIDADO: 'text-green-400',
     CANCELADO: 'text-red-400',
   };
+
+  const creditosFiltrados = creditos.filter((c) => {
+    const texto = busquedaMayorista.toLowerCase();
+    return (
+      c.mayorista?.nombreCompleto.toLowerCase().includes(texto) ||
+      c.mayorista?.numeroCliente.toLowerCase().includes(texto)
+    );
+  });
 
   return (
     <Layout>
@@ -146,26 +184,50 @@ export default function CreditosMayorista() {
               ))}
             </select>
 
-            <p className="text-xs text-[#8a8478] uppercase mb-2">Selecciona los productos (mínimo $2,000 en total)</p>
+            <p className="text-xs text-[#8a8478] uppercase mb-2">Selecciona los productos (mínimo $2,000 en total, solo Oro Laminado)</p>
+            <input
+              type="text"
+              placeholder="Buscar por SKU o nombre..."
+              value={busquedaProducto}
+              onChange={(e) => setBusquedaProducto(e.target.value)}
+              className="w-full bg-transparent border border-[#3a352c] focus:border-[#c9a227] text-[#f5f1e8] px-3 py-2 text-sm outline-none mb-2"
+            />
             <div className="grid grid-cols-2 gap-2 mb-4 max-h-64 overflow-auto">
-              {productos.map((p) => (
-                <label
-                  key={p.id}
-                  className={`border p-3 text-sm cursor-pointer flex items-center gap-2 ${
-                    form.productosSeleccionados.includes(p.id) ? 'border-[#c9a227]' : 'border-[#2a251c]'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={form.productosSeleccionados.includes(p.id)}
-                    onChange={() => toggleProducto(p.id)}
-                  />
-                  <div>
-                    <p className="text-[#f5f1e8]">{p.nombre}</p>
-                    <p className="text-[#8a8478] text-xs">{p.material} — ${Number(p.codigoPrecio.precio).toFixed(2)}</p>
+              {productosFiltrados.map((p) => {
+                const seleccionado = form.productosSeleccionados[p.id];
+                return (
+                  <div
+                    key={p.id}
+                    className={`border p-3 text-sm flex items-center gap-2 ${
+                      seleccionado ? 'border-[#c9a227]' : 'border-[#2a251c]'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={seleccionado !== undefined}
+                      onChange={() => toggleProducto(p.id, p.existencia)}
+                    />
+                    <div className="flex-1">
+                      <p className="text-[#f5f1e8]">{p.nombre} — {p.sku}</p>
+                      <p className="text-[#8a8478] text-xs">
+                        {p.material} — ${Number(p.codigoPrecio.precio).toFixed(2)} — Existencia: {p.existencia}
+                      </p>
+                    </div>
+                    {seleccionado !== undefined && (
+                      <input
+                        type="number"
+                        min="1"
+                        max={p.existencia}
+                        value={seleccionado}
+                        onChange={(e) => actualizarCantidadProducto(p.id, e.target.value)}
+                        onBlur={() => validarCantidadProducto(p.id, p.existencia)}
+                        onFocus={(e) => e.target.select()}
+                        className="bg-transparent border border-[#3a352c] text-[#f5f1e8] text-xs px-2 py-1 w-14"
+                      />
+                    )}
                   </div>
-                </label>
-              ))}
+                );
+              })}
             </div>
 
             <p className="text-[#f5f1e8] mb-3">Total seleccionado: <span className="text-[#c9a227]">${totalSeleccionado.toFixed(2)}</span></p>
@@ -178,11 +240,19 @@ export default function CreditosMayorista() {
           </form>
         )}
 
+        <input
+          type="text"
+          placeholder="Buscar por nombre o número de cliente del mayorista..."
+          value={busquedaMayorista}
+          onChange={(e) => setBusquedaMayorista(e.target.value)}
+          className="w-full bg-transparent border border-[#3a352c] focus:border-[#c9a227] text-[#f5f1e8] px-4 py-2.5 text-sm outline-none mb-4"
+        />
+
         {cargando ? (
           <p className="text-[#8a8478]">Cargando...</p>
         ) : (
           <div className="space-y-4">
-            {creditos.map((c) => (
+            {creditosFiltrados.map((c) => (
               <div key={c.id} className="border border-[#2a251c] p-4">
                 <div className="flex justify-between items-center mb-2">
                   <div>
