@@ -30,10 +30,11 @@ async function abrirCredito(req, res) {
           include: { codigoPrecio: true },
         });
 
-               if (!producto) throw new Error(`Producto ${item.productoId} no encontrado`);
+        if (!producto) throw new Error(`Producto ${item.productoId} no encontrado`);
         if (producto.estado !== 'DISPONIBLE') throw new Error(`Producto ${producto.nombre} no esta disponible`);
         if (producto.existencia < 1) throw new Error(`Producto ${producto.nombre} sin existencia disponible`);
         if (producto.material !== 'ORO_LAMINADO') throw new Error(`Producto ${producto.nombre} no es Oro Laminado, no se acepta en creditos`);
+
         const precio = Number(producto.codigoPrecio.precio);
         totalCredito += precio;
 
@@ -89,7 +90,9 @@ async function abrirCredito(req, res) {
       detalle: `Folio ${resultado.folio}, total $${resultado.totalCredito}`,
     });
 
-    res.status(201).json(resultado);
+    const mayoristaCompleto = await prisma.mayorista.findUnique({ where: { id: resultado.mayoristaId } });
+
+    res.status(201).json({ ...resultado, mayorista: mayoristaCompleto });
   } catch (error) {
     console.error(error);
     res.status(400).json({ error: error.message || 'Error al abrir el credito' });
@@ -135,9 +138,9 @@ async function obtenerCredito(req, res) {
 async function liquidarCredito(req, res) {
   try {
     const { id } = req.params;
-    const { totalVendido, turnoId, productosDevueltos, pagos } = req.body;
+    const { productosVendidos, productosDevueltos, turnoId, pagos } = req.body;
 
-    if (totalVendido === undefined || !turnoId || !pagos) {
+    if (!turnoId || !pagos) {
       return res.status(400).json({ error: 'Faltan datos obligatorios' });
     }
 
@@ -150,30 +153,38 @@ async function liquidarCredito(req, res) {
       if (!credito) throw new Error('Credito no encontrado');
       if (credito.estado !== 'ACTIVO') throw new Error('Este credito ya fue liquidado o cancelado');
 
-      const porcentajeVendido = Number(totalVendido) / Number(credito.totalCredito);
+      const idsVendidos = productosVendidos || [];
+      const idsDevueltos = productosDevueltos || [];
+
+      const totalVendidoReal = credito.productos
+        .filter((p) => idsVendidos.includes(p.id))
+        .reduce((suma, p) => suma + Number(p.precioAlMomento), 0);
+
+      const porcentajeVendido = totalVendidoReal / Number(credito.totalCredito);
       const cumpleMinimo = porcentajeVendido >= PORCENTAJE_MINIMO_VENTA;
 
       let totalAPagar = 0;
-      const idsDevueltos = productosDevueltos || [];
 
       for (const detalle of credito.productos) {
-        const seDevuelve = idsDevueltos.includes(detalle.productoId);
+        const seVendio = idsVendidos.includes(detalle.id);
+        const seDevuelve = idsDevueltos.includes(detalle.id);
+
+        if (seVendio && seDevuelve) {
+          throw new Error(`El producto ${detalle.producto.sku} no puede estar marcado como vendido y devuelto a la vez`);
+        }
 
         if (seDevuelve) {
           if (!cumpleMinimo) {
-            throw new Error('No cumple el minimo de venta (40%), no se pueden devolver productos');
+            throw new Error('No cumple el minimo de venta (50%), no se pueden devolver productos');
           }
           if (detalle.producto.material !== 'ORO_LAMINADO') {
-            throw new Error(`El producto ${detalle.producto.nombre} no es Oro Laminado, no se acepta devolucion`);
+            throw new Error(`El producto ${detalle.producto.sku} no es Oro Laminado, no se acepta devolucion`);
           }
 
           const productoDevuelto = await tx.producto.findUnique({ where: { id: detalle.productoId } });
           await tx.producto.update({
             where: { id: detalle.productoId },
-            data: {
-              existencia: productoDevuelto.existencia + 1,
-              estado: 'DISPONIBLE',
-            },
+            data: { existencia: productoDevuelto.existencia + 1, estado: 'DISPONIBLE' },
           });
 
           await tx.creditoMayoristaProducto.update({
@@ -192,6 +203,11 @@ async function liquidarCredito(req, res) {
           });
         } else {
           totalAPagar += Number(detalle.precioAlMomento);
+
+          await tx.creditoMayoristaProducto.update({
+            where: { id: detalle.id },
+            data: { vendido: seVendio },
+          });
         }
       }
 
@@ -217,7 +233,7 @@ async function liquidarCredito(req, res) {
       const creditoActualizado = await tx.creditoMayorista.update({
         where: { id: credito.id },
         data: {
-          totalVendido: Number(totalVendido),
+          totalVendido: totalVendidoReal,
           estado: 'LIQUIDADO',
           fechaLiquidacion: new Date(),
           ventaId: venta.id,
@@ -240,7 +256,7 @@ async function liquidarCredito(req, res) {
           mayoristaId: mayorista.id,
           ventaId: venta.id,
           monto: totalAPagar,
-          carpetaEntregada: totalAPagar >= 5000,
+          carpetaEntregada: totalAPagar >= 5000 && mayorista.tipoBeneficio === 'NORMAL',
         },
       });
 
@@ -255,7 +271,12 @@ async function liquidarCredito(req, res) {
       detalle: `Folio ${resultado.folio}, vendido $${resultado.totalVendido}`,
     });
 
-    res.json(resultado);
+    const creditoCompleto = await prisma.creditoMayorista.findUnique({
+      where: { id: resultado.id },
+      include: { mayorista: true, productos: { include: { producto: true } } },
+    });
+
+    res.json(creditoCompleto);
   } catch (error) {
     console.error(error);
     res.status(400).json({ error: error.message || 'Error al liquidar el credito' });

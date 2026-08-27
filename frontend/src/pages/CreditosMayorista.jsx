@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../services/api';
 import Layout from '../components/Layout';
+import TicketCredito from '../components/TicketCredito';
 
 export default function CreditosMayorista() {
   const [creditos, setCreditos] = useState([]);
@@ -11,15 +12,15 @@ export default function CreditosMayorista() {
   const [mensaje, setMensaje] = useState('');
   const [busquedaMayorista, setBusquedaMayorista] = useState('');
 
-  const [form, setForm] = useState({ mayoristaId: '', productosSeleccionados: {} });
+  const [form, setForm] = useState({ mayoristaId: '', mayoristaTexto: '', productosSeleccionados: {} });
   const [busquedaProducto, setBusquedaProducto] = useState('');
 
   const [liquidando, setLiquidando] = useState(null);
-  const [formLiquidacion, setFormLiquidacion] = useState({
-    totalVendido: '',
-    productosDevueltos: [],
-    metodoPago: 'EFECTIVO',
-  });
+  const [seleccionLiquidacion, setSeleccionLiquidacion] = useState({});
+  const [metodoPagoLiquidacion, setMetodoPagoLiquidacion] = useState('EFECTIVO');
+  const [mensajeLiquidacion, setMensajeLiquidacion] = useState('');
+
+  const [ticketCredito, setTicketCredito] = useState(null);
 
   function cargarDatos() {
     setCargando(true);
@@ -40,7 +41,7 @@ export default function CreditosMayorista() {
     cargarDatos();
   }, []);
 
-  function toggleProducto(productoId, maxExistencia) {
+  function toggleProducto(productoId) {
     setForm((prev) => {
       const nuevo = { ...prev.productosSeleccionados };
       if (nuevo[productoId]) {
@@ -78,56 +79,64 @@ export default function CreditosMayorista() {
       const productosArray = Object.entries(form.productosSeleccionados).flatMap(
         ([productoId, cantidad]) => Array(cantidad).fill({ productoId: Number(productoId) })
       );
-      await api.post('/creditos-mayorista', {
+      const res = await api.post('/creditos-mayorista', {
         mayoristaId: form.mayoristaId,
         productos: productosArray,
       });
       setForm({ mayoristaId: '', mayoristaTexto: '', productosSeleccionados: {} });
       setMostrarForm(false);
+      setTicketCredito({ credito: res.data, tipo: 'ABIERTO' });
       cargarDatos();
     } catch (err) {
       setMensaje(err.response?.data?.error || 'Error al abrir el credito');
     }
   }
 
-  function toggleDevuelto(productoId) {
-    setFormLiquidacion((prev) => {
-      const yaEsta = prev.productosDevueltos.includes(productoId);
-      return {
-        ...prev,
-        productosDevueltos: yaEsta
-          ? prev.productosDevueltos.filter((id) => id !== productoId)
-          : [...prev.productosDevueltos, productoId],
-      };
-    });
+  function iniciarLiquidacion(credito) {
+    setLiquidando(credito.id);
+    const inicial = {};
+    credito.productos.forEach((p) => { inicial[p.id] = 'PENDIENTE'; });
+    setSeleccionLiquidacion(inicial);
+    setMensajeLiquidacion('');
+  }
+
+  function marcarEstadoPieza(lineaId, estado) {
+    setSeleccionLiquidacion((prev) => ({ ...prev, [lineaId]: prev[lineaId] === estado ? 'PENDIENTE' : estado }));
   }
 
   async function liquidar(credito) {
+    setMensajeLiquidacion('');
     try {
       const turnoRes = await api.get('/turnos/activo');
       if (!turnoRes.data) {
-        alert('Necesitas un turno abierto para liquidar un credito. Ve a Punto de Venta.');
+        setMensajeLiquidacion('Necesitas un turno abierto para liquidar un credito. Ve a Punto de Venta.');
         return;
       }
 
-      const totalNoDevuelto = credito.productos
-        .filter((p) => !formLiquidacion.productosDevueltos.includes(p.productoId))
+      const productosVendidos = Object.entries(seleccionLiquidacion)
+        .filter(([, estado]) => estado === 'VENDIDO')
+        .map(([lineaId]) => Number(lineaId));
+
+      const productosDevueltos = Object.entries(seleccionLiquidacion)
+        .filter(([, estado]) => estado === 'DEVUELTO')
+        .map(([lineaId]) => Number(lineaId));
+
+      const totalAPagar = credito.productos
+        .filter((p) => !productosDevueltos.includes(p.id))
         .reduce((suma, p) => suma + Number(p.precioAlMomento), 0);
 
-      const totalAPagar = totalNoDevuelto;
-
-      await api.put(`/creditos-mayorista/${credito.id}/liquidar`, {
-        totalVendido: Number(formLiquidacion.totalVendido),
+      const res = await api.put(`/creditos-mayorista/${credito.id}/liquidar`, {
+        productosVendidos,
+        productosDevueltos,
         turnoId: turnoRes.data.id,
-        productosDevueltos: formLiquidacion.productosDevueltos,
-        pagos: [{ metodoPago: formLiquidacion.metodoPago, monto: totalAPagar }],
+        pagos: [{ metodoPago: metodoPagoLiquidacion, monto: totalAPagar }],
       });
 
+      setTicketCredito({ credito: res.data, tipo: 'LIQUIDADO' });
       setLiquidando(null);
-      setFormLiquidacion({ totalVendido: '', productosDevueltos: [], metodoPago: 'EFECTIVO' });
       cargarDatos();
     } catch (err) {
-      alert(err.response?.data?.error || 'Error al liquidar el credito');
+      setMensajeLiquidacion(err.response?.data?.error || 'Error al liquidar el credito');
     }
   }
 
@@ -205,13 +214,13 @@ export default function CreditosMayorista() {
                   <div
                     key={p.id}
                     className={`border p-3 text-sm flex items-center gap-2 ${
-                      seleccionado ? 'border-[#c9a227]' : 'border-[#2a251c]'
+                      seleccionado !== undefined ? 'border-[#c9a227]' : 'border-[#2a251c]'
                     }`}
                   >
                     <input
                       type="checkbox"
                       checked={seleccionado !== undefined}
-                      onChange={() => toggleProducto(p.id, p.existencia)}
+                      onChange={() => toggleProducto(p.id)}
                     />
                     <div className="flex-1">
                       <p className="text-[#f5f1e8]">{p.nombre} — {p.sku}</p>
@@ -273,8 +282,9 @@ export default function CreditosMayorista() {
                 <div className="text-xs text-[#8a8478] mb-2">
                   {c.productos.map((p) => (
                     <p key={p.id}>
-                      {p.producto.nombre} — {p.producto.material} — ${Number(p.precioAlMomento).toFixed(2)}
+                      {p.producto.sku} — {p.producto.nombre} — ${Number(p.precioAlMomento).toFixed(2)}
                       {p.devuelto && <span className="text-green-400"> (devuelto)</span>}
+                      {p.vendido && <span className="text-blue-400"> (vendido)</span>}
                     </p>
                   ))}
                 </div>
@@ -282,32 +292,36 @@ export default function CreditosMayorista() {
                 {c.estado === 'ACTIVO' && (
                   liquidando === c.id ? (
                     <div className="border-t border-[#2a251c] pt-3 mt-3">
-                      <p className="text-xs text-[#8a8478] uppercase mb-2">Liquidar crédito</p>
-                      <input
-                        type="number"
-                        placeholder="Total vendido"
-                        value={formLiquidacion.totalVendido}
-                        onChange={(e) => setFormLiquidacion({ ...formLiquidacion, totalVendido: e.target.value })}
-                        className="bg-transparent border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227] w-full mb-3"
-                      />
-
-                      <p className="text-xs text-[#8a8478] mb-2">Marca los productos que el mayorista regresa (solo Oro Laminado se acepta):</p>
-                      <div className="space-y-1 mb-3">
+                      <p className="text-xs text-[#8a8478] uppercase mb-2">
+                        Marca el estado de cada pieza (Vendida = el mayorista la vendió; Devuelta = solo Oro Laminado; sin marcar = se la queda y paga)
+                      </p>
+                      <div className="space-y-2 mb-3">
                         {c.productos.map((p) => (
-                          <label key={p.id} className="flex items-center gap-2 text-xs text-[#f5f1e8]">
-                            <input
-                              type="checkbox"
-                              checked={formLiquidacion.productosDevueltos.includes(p.productoId)}
-                              onChange={() => toggleDevuelto(p.productoId)}
-                            />
-                            {p.producto.nombre} — {p.producto.material} — ${Number(p.precioAlMomento).toFixed(2)}
-                          </label>
+                          <div key={p.id} className="flex items-center justify-between text-xs border border-[#2a251c] p-2">
+                            <span className="text-[#f5f1e8]">{p.producto.sku} — ${Number(p.precioAlMomento).toFixed(2)}</span>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => marcarEstadoPieza(p.id, 'VENDIDO')}
+                                className={`px-2 py-1 border ${seleccionLiquidacion[p.id] === 'VENDIDO' ? 'border-blue-400 text-blue-400' : 'border-[#3a352c] text-[#8a8478]'}`}
+                              >
+                                Vendida
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => marcarEstadoPieza(p.id, 'DEVUELTO')}
+                                className={`px-2 py-1 border ${seleccionLiquidacion[p.id] === 'DEVUELTO' ? 'border-green-400 text-green-400' : 'border-[#3a352c] text-[#8a8478]'}`}
+                              >
+                                Devolver
+                              </button>
+                            </div>
+                          </div>
                         ))}
                       </div>
 
                       <select
-                        value={formLiquidacion.metodoPago}
-                        onChange={(e) => setFormLiquidacion({ ...formLiquidacion, metodoPago: e.target.value })}
+                        value={metodoPagoLiquidacion}
+                        onChange={(e) => setMetodoPagoLiquidacion(e.target.value)}
                         className="bg-[#1a1815] border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227] w-full mb-3"
                       >
                         <option value="EFECTIVO">Efectivo</option>
@@ -315,6 +329,8 @@ export default function CreditosMayorista() {
                         <option value="TRANSFERENCIA">Transferencia</option>
                         <option value="DEPOSITO">Depósito</option>
                       </select>
+
+                      {mensajeLiquidacion && <p className="text-red-400 text-xs mb-3">{mensajeLiquidacion}</p>}
 
                       <div className="flex gap-3">
                         <button onClick={() => liquidar(c)} className="bg-[#c9a227] text-[#1a1815] px-4 py-2 text-sm font-medium">
@@ -326,7 +342,7 @@ export default function CreditosMayorista() {
                       </div>
                     </div>
                   ) : (
-                    <button onClick={() => setLiquidando(c.id)} className="text-xs text-[#c9a227] hover:underline">
+                    <button onClick={() => iniciarLiquidacion(c)} className="text-xs text-[#c9a227] hover:underline">
                       Liquidar
                     </button>
                   )
@@ -336,6 +352,22 @@ export default function CreditosMayorista() {
           </div>
         )}
       </div>
+
+      {ticketCredito && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 print:bg-white print:relative">
+          <div className="bg-[#1a1815] p-4 max-h-[90vh] overflow-auto print:bg-white print:p-0 print:max-h-none">
+            <div className="print:hidden flex justify-between items-center mb-4 gap-4">
+              <button onClick={() => window.print()} className="bg-[#c9a227] text-[#1a1815] px-4 py-2 text-sm font-medium">
+                Imprimir ticket
+              </button>
+              <button onClick={() => setTicketCredito(null)} className="text-[#8a8478] text-sm hover:text-[#f5f1e8]">
+                Cerrar
+              </button>
+            </div>
+            <TicketCredito credito={ticketCredito.credito} tipo={ticketCredito.tipo} />
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }

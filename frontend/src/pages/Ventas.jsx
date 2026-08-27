@@ -6,6 +6,7 @@ import Ticket from '../components/Ticket';
 export default function Ventas() {
   const [turno, setTurno] = useState(null);
   const [productos, setProductos] = useState([]);
+  const [mayoristas, setMayoristas] = useState([]);
   const [carrito, setCarrito] = useState([]);
   const [pagos, setPagos] = useState([{ metodoPago: 'EFECTIVO', monto: '' }]);
   const [cargando, setCargando] = useState(true);
@@ -14,11 +15,20 @@ export default function Ventas() {
   const [busquedaSku, setBusquedaSku] = useState('');
   const [mensajeBusqueda, setMensajeBusqueda] = useState('');
 
+  const [tipoDescuento, setTipoDescuento] = useState('NORMAL');
+  const [mayoristaSeleccionado, setMayoristaSeleccionado] = useState(null);
+  const [busquedaMayorista, setBusquedaMayorista] = useState('');
+
   useEffect(() => {
-    Promise.all([api.get('/turnos/activo'), api.get('/productos?estado=DISPONIBLE')])
-      .then(([resTurno, resProductos]) => {
+    Promise.all([
+      api.get('/turnos/activo'),
+      api.get('/productos?estado=DISPONIBLE'),
+      api.get('/mayoristas'),
+    ])
+      .then(([resTurno, resProductos, resMayoristas]) => {
         setTurno(resTurno.data);
         setProductos(resProductos.data);
+        setMayoristas(resMayoristas.data);
       })
       .finally(() => setCargando(false));
   }, []);
@@ -32,9 +42,18 @@ export default function Ventas() {
     }
   }
 
+  function precioConDescuento(producto) {
+    const base = Number(producto.codigoPrecio.precio);
+    if (producto.tieneDescuentoAplicado) return base;
+    if (tipoDescuento === 'MAYORISTA') return base * 0.5;
+    if (tipoDescuento === 'LOCATARIO') return base * 0.8;
+    return base;
+  }
+
   function agregarAlCarrito(producto) {
     const yaExiste = carrito.find((item) => item.productoId === producto.id);
     if (yaExiste) {
+      if (yaExiste.cantidad >= producto.existencia) return;
       setCarrito(carrito.map((item) =>
         item.productoId === producto.id ? { ...item, cantidad: item.cantidad + 1 } : item
       ));
@@ -42,7 +61,11 @@ export default function Ventas() {
       setCarrito([...carrito, {
         productoId: producto.id,
         nombre: producto.nombre,
-        precio: Number(producto.codigoPrecio.precio),
+        sku: producto.sku,
+        existenciaMaxima: producto.existencia,
+        tieneDescuentoAplicado: producto.tieneDescuentoAplicado,
+        precioBase: Number(producto.codigoPrecio.precio),
+        precio: precioConDescuento(producto),
         cantidad: 1,
       }]);
     }
@@ -69,7 +92,47 @@ export default function Ventas() {
     setCarrito(carrito.filter((item) => item.productoId !== productoId));
   }
 
-  const total = carrito.reduce((suma, item) => suma + item.precio * item.cantidad, 0);
+  function actualizarCantidadCarrito(productoId, cantidadTexto) {
+    setCarrito(carrito.map((item) =>
+      item.productoId === productoId ? { ...item, cantidad: cantidadTexto } : item
+    ));
+  }
+
+  function validarCantidadCarrito(productoId) {
+    setCarrito(carrito.map((item) => {
+      if (item.productoId !== productoId) return item;
+      let cantidad = parseInt(item.cantidad, 10);
+      if (isNaN(cantidad) || cantidad < 1) cantidad = 1;
+      if (cantidad > item.existenciaMaxima) cantidad = item.existenciaMaxima;
+      return { ...item, cantidad };
+    }));
+  }
+
+  function seleccionarMayorista(mayorista) {
+    setMayoristaSeleccionado(mayorista);
+    setTipoDescuento('MAYORISTA');
+    setBusquedaMayorista(`${mayorista.numeroCliente} — ${mayorista.nombreCompleto}`);
+  }
+
+  function cambiarTipoDescuento(nuevoTipo) {
+    setTipoDescuento(nuevoTipo);
+    if (nuevoTipo !== 'MAYORISTA') {
+      setMayoristaSeleccionado(null);
+      setBusquedaMayorista('');
+    }
+  }
+
+  // Recalcula los precios del carrito cuando cambia el tipo de descuento
+  useEffect(() => {
+    setCarrito((prev) => prev.map((item) => {
+      const producto = productos.find((p) => p.id === item.productoId);
+      if (!producto) return item;
+      return { ...item, precio: precioConDescuento(producto) };
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tipoDescuento]);
+
+  const total = carrito.reduce((suma, item) => suma + item.precio * (Number(item.cantidad) || 0), 0);
   const totalPagos = pagos.reduce((suma, p) => suma + (Number(p.monto) || 0), 0);
 
   function actualizarPago(index, campo, valor) {
@@ -87,11 +150,17 @@ export default function Ventas() {
     try {
       const resVenta = await api.post('/ventas', {
         turnoId: turno.id,
-        tipoVenta: 'MENUDEO',
-        productos: carrito.map((item) => ({ productoId: item.productoId, cantidad: item.cantidad })),
+        tipoVenta: tipoDescuento === 'MAYORISTA' ? 'MAYOREO' : 'MENUDEO',
+        tipoDescuento,
+        mayoristaId: mayoristaSeleccionado ? mayoristaSeleccionado.id : undefined,
+        productos: carrito.map((item) => ({ productoId: item.productoId, cantidad: Number(item.cantidad) })),
         pagos: pagos.map((p) => ({ metodoPago: p.metodoPago, monto: Number(p.monto) })),
         descuento: 0,
       });
+
+      if (mayoristaSeleccionado) {
+        await api.post(`/mayoristas/${mayoristaSeleccionado.id}/compra`, { ventaId: resVenta.data.id });
+      }
 
       const resTicket = await api.post('/tickets', {
         ventaId: resVenta.data.id,
@@ -102,6 +171,9 @@ export default function Ventas() {
       setMensaje('Venta registrada con exito');
       setCarrito([]);
       setPagos([{ metodoPago: 'EFECTIVO', monto: '' }]);
+      setTipoDescuento('NORMAL');
+      setMayoristaSeleccionado(null);
+      setBusquedaMayorista('');
       const res = await api.get('/productos?estado=DISPONIBLE');
       setProductos(res.data);
     } catch (err) {
@@ -146,6 +218,60 @@ export default function Ventas() {
             Punto de Venta
           </h2>
 
+          <div className="mb-4">
+            <p className="text-xs text-[#8a8478] uppercase mb-2">Tipo de venta</p>
+            <div className="flex gap-2 mb-2">
+              {['NORMAL', 'LOCATARIO', 'MAYORISTA'].map((tipo) => (
+                <button
+                  key={tipo}
+                  onClick={() => cambiarTipoDescuento(tipo)}
+                  className={`px-3 py-1.5 text-xs border ${
+                    tipoDescuento === tipo ? 'border-[#c9a227] text-[#c9a227]' : 'border-[#2a251c] text-[#8a8478]'
+                  }`}
+                >
+                  {tipo === 'NORMAL' ? 'Venta normal' : tipo === 'LOCATARIO' ? 'Locatario (-20%)' : 'Mayorista (-50%)'}
+                </button>
+              ))}
+            </div>
+
+            {tipoDescuento !== 'NORMAL' && (
+              <p className="text-xs text-amber-400 border-l-2 border-amber-400 pl-2 mb-2">
+                ⚠ Se aplicará {tipoDescuento === 'MAYORISTA' ? '50%' : '20%'} de descuento a los productos sin "+OFF".
+              </p>
+            )}
+
+            {tipoDescuento === 'MAYORISTA' && (
+              <div>
+                <input
+                  type="text"
+                  placeholder="Buscar mayorista por nombre o número..."
+                  value={busquedaMayorista}
+                  onChange={(e) => setBusquedaMayorista(e.target.value)}
+                  list="lista-mayoristas-venta"
+                  className="w-full bg-transparent border border-[#3a352c] focus:border-[#c9a227] text-[#f5f1e8] px-3 py-2 text-sm outline-none"
+                />
+                <datalist id="lista-mayoristas-venta">
+                  {mayoristas.map((m) => (
+                    <option key={m.id} value={`${m.numeroCliente} — ${m.nombreCompleto}`} />
+                  ))}
+                </datalist>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const encontrado = mayoristas.find((m) => `${m.numeroCliente} — ${m.nombreCompleto}` === busquedaMayorista);
+                    if (encontrado) seleccionarMayorista(encontrado);
+                  }}
+                  className="text-xs text-[#c9a227] hover:underline mt-1"
+                >
+                  Confirmar mayorista
+                </button>
+                {mayoristaSeleccionado && (
+                  <p className="text-xs text-green-400 mt-1">Seleccionado: {mayoristaSeleccionado.nombreCompleto}</p>
+                )}
+              </div>
+            )}
+          </div>
+
           <form onSubmit={buscarPorSku} className="flex gap-2 mb-6">
             <input
               type="text"
@@ -168,9 +294,11 @@ export default function Ventas() {
                 onClick={() => agregarAlCarrito(p)}
                 className="border border-[#2a251c] hover:border-[#c9a227] p-4 text-left transition-colors"
               >
-                <p className="text-[#f5f1e8] text-sm">{p.nombre}</p>
-                <p className="text-[#8a8478] text-xs">{p.sku} • {p.material}</p>
-                <p className="text-[#c9a227] mt-1">${Number(p.codigoPrecio.precio).toFixed(2)}</p>
+                <p className="text-[#f5f1e8] text-sm">
+                  {p.nombre} {p.tieneDescuentoAplicado && <span className="text-amber-400 text-xs">(OFF)</span>}
+                </p>
+                <p className="text-[#8a8478] text-xs">{p.sku} • {p.material} • Existencia: {p.existencia}</p>
+                <p className="text-[#c9a227] mt-1">${precioConDescuento(p).toFixed(2)}</p>
               </button>
             ))}
           </div>
@@ -185,9 +313,23 @@ export default function Ventas() {
             <div className="space-y-2 mb-4">
               {carrito.map((item) => (
                 <div key={item.productoId} className="flex justify-between items-center text-sm">
-                  <div>
+                  <div className="flex-1">
                     <p className="text-[#f5f1e8]">{item.nombre}</p>
-                    <p className="text-[#8a8478] text-xs">x{item.cantidad} — ${(item.precio * item.cantidad).toFixed(2)}</p>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="1"
+                        max={item.existenciaMaxima}
+                        value={item.cantidad}
+                        onChange={(e) => actualizarCantidadCarrito(item.productoId, e.target.value)}
+                        onBlur={() => validarCantidadCarrito(item.productoId)}
+                        onFocus={(e) => e.target.select()}
+                        className="bg-transparent border border-[#3a352c] text-[#f5f1e8] text-xs px-2 py-0.5 w-12"
+                      />
+                      <p className="text-[#8a8478] text-xs">
+                        x ${item.precio.toFixed(2)} = ${(item.precio * (Number(item.cantidad) || 0)).toFixed(2)}
+                      </p>
+                    </div>
                   </div>
                   <button onClick={() => quitarDelCarrito(item.productoId)} className="text-red-400 text-xs">
                     Quitar
@@ -246,7 +388,7 @@ export default function Ventas() {
 
           <button
             onClick={confirmarVenta}
-            disabled={carrito.length === 0 || totalPagos !== total}
+            disabled={carrito.length === 0 || totalPagos !== total || (tipoDescuento === 'MAYORISTA' && !mayoristaSeleccionado)}
             className="w-full bg-[#c9a227] hover:bg-[#b8931f] text-[#1a1815] font-medium py-2.5 text-sm disabled:opacity-40"
           >
             Confirmar venta
@@ -265,7 +407,7 @@ export default function Ventas() {
                 Cerrar
               </button>
             </div>
-            <Ticket venta={ticketData.venta} versiculo={ticketData.versiculo} />
+            <Ticket venta={ticketData.venta} versiculo={ticketData.versiculo} tipoTicket="VENTA" />
           </div>
         </div>
       )}

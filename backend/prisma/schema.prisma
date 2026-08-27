@@ -380,6 +380,7 @@ model CreditoMayoristaProducto {
   producto        Producto         @relation(fields: [productoId], references: [id])
   precioAlMomento Decimal          @db.Decimal(10, 2)
   devuelto        Boolean          @default(false)
+  vendido         Boolean          @default(false)
 
   @@map("credito_mayorista_productos")
 }

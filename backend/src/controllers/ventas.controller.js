@@ -7,7 +7,7 @@ function generarFolio(id) {
 
 async function crearVenta(req, res) {
   try {
-    const { turnoId, tipoVenta, productos, pagos, descuento, mayoristaId } = req.body;
+    const { turnoId, tipoVenta, productos, pagos, descuento, mayoristaId, tipoDescuento } = req.body;
 
     if (!turnoId || !tipoVenta || !productos || productos.length === 0 || !pagos || pagos.length === 0) {
       return res.status(400).json({ error: 'Faltan datos obligatorios para la venta' });
@@ -16,6 +16,9 @@ async function crearVenta(req, res) {
     const resultado = await prisma.$transaction(async (tx) => {
       let subtotal = 0;
       const detallesData = [];
+
+      const PORCENTAJE_MAYORISTA = 0.5;
+      const PORCENTAJE_LOCATARIO = 0.2;
 
       for (const item of productos) {
         const producto = await tx.producto.findUnique({
@@ -27,7 +30,17 @@ async function crearVenta(req, res) {
         if (producto.estado !== 'DISPONIBLE') throw new Error(`Producto ${producto.nombre} no esta disponible`);
         if (producto.existencia < item.cantidad) throw new Error(`Existencia insuficiente de ${producto.nombre}`);
 
-        const precioUnitario = Number(producto.codigoPrecio.precio);
+        const precioBase = Number(producto.codigoPrecio.precio);
+        let precioUnitario = precioBase;
+
+        if (!producto.tieneDescuentoAplicado) {
+          if (tipoDescuento === 'MAYORISTA') {
+            precioUnitario = precioBase * (1 - PORCENTAJE_MAYORISTA);
+          } else if (tipoDescuento === 'LOCATARIO') {
+            precioUnitario = precioBase * (1 - PORCENTAJE_LOCATARIO);
+          }
+        }
+
         const subtotalLinea = precioUnitario * item.cantidad;
         subtotal += subtotalLinea;
 
