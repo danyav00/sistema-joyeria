@@ -82,7 +82,7 @@ export default function CreditosMayorista() {
         mayoristaId: form.mayoristaId,
         productos: productosArray,
       });
-      setForm({ mayoristaId: '', productosSeleccionados: {} });
+      setForm({ mayoristaId: '', mayoristaTexto: '', productosSeleccionados: {} });
       setMostrarForm(false);
       cargarDatos();
     } catch (err) {
@@ -172,17 +172,23 @@ export default function CreditosMayorista() {
 
         {mostrarForm && (
           <form onSubmit={abrirCredito} className="border border-[#2a251c] p-5 mb-6">
-            <select
-              value={form.mayoristaId}
-              onChange={(e) => setForm({ ...form, mayoristaId: e.target.value })}
-              className="bg-[#1a1815] border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227] w-full mb-4"
+            <input
+              list="lista-mayoristas"
+              placeholder="Escribe para buscar un mayorista..."
+              value={form.mayoristaTexto || ''}
+              onChange={(e) => {
+                const texto = e.target.value;
+                const encontrado = mayoristas.find((m) => `${m.numeroCliente} — ${m.nombreCompleto}` === texto);
+                setForm({ ...form, mayoristaTexto: texto, mayoristaId: encontrado ? encontrado.id : '' });
+              }}
+              className="bg-transparent border border-[#3a352c] focus:border-[#c9a227] text-[#f5f1e8] px-3 py-2 text-sm outline-none w-full mb-4"
               required
-            >
-              <option value="">Selecciona un mayorista</option>
+            />
+            <datalist id="lista-mayoristas">
               {mayoristas.map((m) => (
-                <option key={m.id} value={m.id}>{m.numeroCliente} — {m.nombreCompleto}</option>
+                <option key={m.id} value={`${m.numeroCliente} — ${m.nombreCompleto}`} />
               ))}
-            </select>
+            </datalist>
 
             <p className="text-xs text-[#8a8478] uppercase mb-2">Selecciona los productos (mínimo $2,000 en total, solo Oro Laminado)</p>
             <input
