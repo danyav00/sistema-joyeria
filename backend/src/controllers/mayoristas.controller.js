@@ -4,13 +4,13 @@ const ID_PRODUCTO_CARPETA = 1;
 
 async function crearMayorista(req, res) {
   try {
-    const { numeroCliente, nombreCompleto, telefono } = req.body;
+    const { numeroCliente, nombreCompleto, telefono, tipoBeneficio } = req.body;
     if (!numeroCliente || !nombreCompleto || !telefono) {
       return res.status(400).json({ error: 'Faltan datos obligatorios' });
     }
 
     const mayorista = await prisma.mayorista.create({
-      data: { numeroCliente, nombreCompleto, telefono },
+      data: { numeroCliente, nombreCompleto, telefono, tipoBeneficio: tipoBeneficio || 'NORMAL' },
     });
 
       await registrarAuditoria({
@@ -78,19 +78,22 @@ async function registrarCompra(req, res) {
       const venta = await tx.venta.findUnique({ where: { id: Number(ventaId) } });
       if (!venta) throw new Error('Venta no encontrada');
 
-      const monto = Number(venta.total);
+            const monto = Number(venta.total);
       let carpetaEntregada = false;
+
+      const umbralActivacion = mayorista.tipoBeneficio === 'ESPECIAL' ? 1500 : 4000;
+      const umbralReactivacion = mayorista.tipoBeneficio === 'ESPECIAL' ? 1500 : 1500;
 
       const nuevoAcumulado = Number(mayorista.totalAcumuladoPeriodo) + monto;
       let nuevoEstado = mayorista.estado;
 
-      if (mayorista.estado === 'SUSPENDIDO' && monto >= 1500) {
+      if (mayorista.estado === 'SUSPENDIDO' && monto >= umbralReactivacion) {
         nuevoEstado = 'ACTIVO';
       }
-      if (nuevoAcumulado >= 4000) {
+      if (nuevoAcumulado >= umbralActivacion) {
         nuevoEstado = 'ACTIVO';
       }
-            if (monto >= 5000) {
+      if (monto >= 5000 && mayorista.tipoBeneficio === 'NORMAL') {
         carpetaEntregada = true;
 
         const carpeta = await tx.producto.findUnique({ where: { id: ID_PRODUCTO_CARPETA } });
@@ -182,6 +185,35 @@ async function actualizarMayorista(req, res) {
     res.status(500).json({ error: 'Error al actualizar el mayorista' });
   }
 }
+async function reactivarManual(req, res) {
+  try {
+    const { id } = req.params;
+
+    const mayorista = await prisma.mayorista.findUnique({ where: { id: Number(id) } });
+    if (!mayorista) return res.status(404).json({ error: 'Mayorista no encontrado' });
+    if (mayorista.estado !== 'SUSPENDIDO') {
+      return res.status(400).json({ error: 'El mayorista no esta suspendido' });
+    }
+
+    const mayoristaActualizado = await prisma.mayorista.update({
+      where: { id: mayorista.id },
+      data: { estado: 'ACTIVO', fechaUltimaCompra: new Date() },
+    });
+
+    await registrarAuditoria({
+      usuarioId: req.usuario.id,
+      accion: 'Reactivo mayorista manualmente',
+      tablaAfectada: 'mayoristas',
+      registroId: mayorista.id,
+      detalle: `${mayorista.numeroCliente} - ${mayorista.nombreCompleto}`,
+    });
+
+    res.json(mayoristaActualizado);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al reactivar el mayorista' });
+  }
+}
 
 module.exports = {
   crearMayorista,
@@ -190,4 +222,5 @@ module.exports = {
   registrarCompra,
   revisarInactivos,
   actualizarMayorista,
+  reactivarManual,
 };

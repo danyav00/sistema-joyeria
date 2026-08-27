@@ -6,11 +6,9 @@ export default function Mayoristas() {
   const [mayoristas, setMayoristas] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [mostrarForm, setMostrarForm] = useState(false);
-  const [form, setForm] = useState({ numeroCliente: '', nombreCompleto: '', telefono: '' });
-
   const [editando, setEditando] = useState(null);
-  const [formEdicion, setFormEdicion] = useState({ nombreCompleto: '', telefono: '' });
-
+  const [form, setForm] = useState({ numeroCliente: '', nombreCompleto: '', telefono: '', tipoBeneficio: 'NORMAL' });
+  
   function cargarDatos() {
     setCargando(true);
     api.get('/mayoristas').then((res) => setMayoristas(res.data)).finally(() => setCargando(false));
@@ -24,7 +22,7 @@ export default function Mayoristas() {
     e.preventDefault();
     try {
       await api.post('/mayoristas', form);
-      setForm({ numeroCliente: '', nombreCompleto: '', telefono: '' });
+      setForm({ numeroCliente: '', nombreCompleto: '', telefono: '', tipoBeneficio: 'NORMAL' });
       setMostrarForm(false);
       cargarDatos();
     } catch (err) {
@@ -40,6 +38,16 @@ export default function Mayoristas() {
       cargarDatos();
     } catch (err) {
       alert(err.response?.data?.error || 'Error al revisar mayoristas');
+    }
+  }
+  
+  async function reactivarManual(id, nombre) {
+    if (!confirm(`¿Reactivar manualmente a "${nombre}"? Confirma que cumple el minimo de $1,500 en compra.`)) return;
+    try {
+      await api.put(`/mayoristas/${id}/reactivar`);
+      cargarDatos();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Error al reactivar el mayorista');
     }
   }
 
@@ -89,6 +97,12 @@ export default function Mayoristas() {
               className="bg-transparent border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227]" required />
             <input placeholder="Teléfono" value={form.telefono} onChange={(e) => setForm({ ...form, telefono: e.target.value })}
               className="bg-transparent border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227]" required />
+            <select value={form.tipoBeneficio} onChange={(e) => setForm({ ...form, tipoBeneficio: e.target.value })}
+              className="bg-[#1a1815] border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227] col-span-3">
+              <option value="NORMAL">Normal (activa con $4,000, obtiene carpeta con $5,000)</option>
+              <option value="SIN_CARPETA">Sin carpeta (activa con $4,000, sin regalo)</option>
+              <option value="ESPECIAL">Especial / caso aislado (activa con $1,500, sin regalo)</option>
+            </select>
             <button type="submit" className="bg-[#c9a227] hover:bg-[#b8931f] text-[#1a1815] font-medium py-2 text-sm col-span-3">
               Guardar mayorista
             </button>
@@ -105,6 +119,7 @@ export default function Mayoristas() {
                 <th className="pb-3">Nombre</th>
                 <th className="pb-3">Teléfono</th>
                 <th className="pb-3">Acumulado</th>
+                <th className="pb-3">Tipo</th>
                 <th className="pb-3">Estado</th>
                 <th className="pb-3">Acción</th>
               </tr>
@@ -137,6 +152,7 @@ export default function Mayoristas() {
                     </>
                   )}
                   <td className="py-3 text-[#c9a227]">${Number(m.totalAcumuladoPeriodo).toFixed(2)}</td>
+                  <td className="py-3 text-[#8a8478] text-xs">{m.tipoBeneficio}</td>
                   <td className={`py-3 ${m.estado === 'ACTIVO' ? 'text-green-400' : 'text-amber-400'}`}>{m.estado}</td>
                   <td className="py-3">
                     {editando === m.id ? (
@@ -145,9 +161,16 @@ export default function Mayoristas() {
                         <button onClick={() => setEditando(null)} className="text-xs text-red-400">Cancelar</button>
                       </div>
                     ) : (
-                      <button onClick={() => iniciarEdicion(m)} className="text-xs text-[#8a8478] hover:text-[#c9a227] hover:underline">
-                        Editar
-                      </button>
+                      <div className="flex gap-3">
+                        <button onClick={() => iniciarEdicion(m)} className="text-xs text-[#8a8478] hover:text-[#c9a227] hover:underline">
+                          Editar
+                        </button>
+                        {m.estado === 'SUSPENDIDO' && (
+                          <button onClick={() => reactivarManual(m.id, m.nombreCompleto)} className="text-xs text-green-400 hover:underline">
+                            Reactivar
+                          </button>
+                        )}
+                      </div>
                     )}
                   </td>
                 </tr>

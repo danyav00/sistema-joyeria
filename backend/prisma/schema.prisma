@@ -243,13 +243,19 @@ enum EstadoMayorista {
   ACTIVO
   SUSPENDIDO
 }
+enum TipoBeneficioMayorista {
+  NORMAL
+  SIN_CARPETA
+  ESPECIAL
+}
 
 model Mayorista {
   id                     Int             @id @default(autoincrement())
   numeroCliente          String          @unique
   nombreCompleto         String
   telefono               String
-  estado                 EstadoMayorista @default(ACTIVO)
+  estado                 EstadoMayorista         @default(ACTIVO)
+  tipoBeneficio           TipoBeneficioMayorista  @default(NORMAL)
   totalAcumuladoPeriodo  Decimal         @default(0) @db.Decimal(10, 2)
   fechaUltimaCompra      DateTime?
   fechaRegistro          DateTime        @default(now())
