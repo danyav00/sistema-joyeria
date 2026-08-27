@@ -113,10 +113,18 @@ async function ajustarInventario(req, res) {
       return res.status(400).json({ error: 'La existencia no puede quedar negativa' });
     }
 
+    let nuevoEstado = producto.estado;
+    if (nuevaExistencia > 0 && (producto.estado === 'VENDIDO' || producto.estado === 'CANCELADO')) {
+      nuevoEstado = 'DISPONIBLE';
+    }
+    if (nuevaExistencia === 0 && producto.estado === 'DISPONIBLE') {
+      nuevoEstado = 'VENDIDO';
+    }
+
     const productoActualizado = await prisma.$transaction(async (tx) => {
       const actualizado = await tx.producto.update({
         where: { id: Number(id) },
-        data: { existencia: nuevaExistencia },
+        data: { existencia: nuevaExistencia, estado: nuevoEstado },
       });
 
       await tx.movimientoInventario.create({

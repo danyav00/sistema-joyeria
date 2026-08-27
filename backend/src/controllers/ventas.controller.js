@@ -1,7 +1,7 @@
 const prisma = require('../utils/prisma');
 
-function generarFolio() {
-  return `V-${Date.now()}`;
+function generarFolio(id) {
+  return `V-${String(id).padStart(5, '0')}`;
 }
 
 async function crearVenta(req, res) {
@@ -65,9 +65,9 @@ async function crearVenta(req, res) {
         throw new Error(`Los pagos ($${totalPagos}) no coinciden con el total de la venta ($${total})`);
       }
 
-      const venta = await tx.venta.create({
+      const ventaTemp = await tx.venta.create({
         data: {
-          folio: generarFolio(),
+          folio: 'TEMP',
           usuarioId: req.usuario.id,
           turnoId: Number(turnoId),
           tipoVenta,
@@ -78,6 +78,12 @@ async function crearVenta(req, res) {
           detalles: { create: detallesData },
           pagos: { create: pagos.map((p) => ({ metodoPago: p.metodoPago, monto: Number(p.monto) })) },
         },
+        include: { detalles: true, pagos: true },
+      });
+
+      const venta = await tx.venta.update({
+        where: { id: ventaTemp.id },
+        data: { folio: generarFolio(ventaTemp.id) },
         include: { detalles: true, pagos: true },
       });
 
@@ -126,6 +132,7 @@ async function obtenerVenta(req, res) {
         detalles: { include: { producto: true } },
         pagos: true,
         usuario: { select: { nombre: true } },
+        mayorista: { select: { nombreCompleto: true } },
       },
     });
 

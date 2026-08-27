@@ -223,6 +223,12 @@ export default function Ventas() {
                   placeholder="Monto"
                   value={pago.monto}
                   onChange={(e) => actualizarPago(index, 'monto', e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && carrito.length > 0 && totalPagos === total) {
+                      e.preventDefault();
+                      confirmarVenta();
+                    }
+                  }}
                   className="bg-transparent border border-[#3a352c] text-[#f5f1e8] text-xs px-2 py-1.5 w-20"
                 />
               </div>

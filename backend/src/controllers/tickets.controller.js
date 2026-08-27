@@ -9,7 +9,12 @@ async function generarTicket(req, res) {
 
     const venta = await prisma.venta.findUnique({
       where: { id: Number(ventaId) },
-      include: { detalles: { include: { producto: true } }, pagos: true, usuario: { select: { nombre: true } } },
+      include: {
+        detalles: { include: { producto: true } },
+        pagos: true,
+        usuario: { select: { nombre: true } },
+        mayorista: { select: { nombreCompleto: true } },
+      },
     });
 
     if (!venta) return res.status(404).json({ error: 'Venta no encontrada' });
