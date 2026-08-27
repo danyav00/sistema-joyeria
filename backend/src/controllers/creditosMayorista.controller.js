@@ -1,4 +1,5 @@
 const prisma = require('../utils/prisma');
+const { registrarAuditoria } = require('../utils/auditoria');
 
 const PORCENTAJE_MINIMO_VENTA = 0.4;
 const DIAS_LIMITE = 45;
@@ -78,6 +79,14 @@ async function abrirCredito(req, res) {
       });
 
       return credito;
+    });
+
+    await registrarAuditoria({
+      usuarioId: req.usuario.id,
+      accion: 'Abrio credito de mayorista',
+      tablaAfectada: 'creditos_mayorista',
+      registroId: resultado.id,
+      detalle: `Folio ${resultado.folio}, total $${resultado.totalCredito}`,
     });
 
     res.status(201).json(resultado);
@@ -236,6 +245,14 @@ async function liquidarCredito(req, res) {
       });
 
       return creditoActualizado;
+    });
+
+    await registrarAuditoria({
+      usuarioId: req.usuario.id,
+      accion: 'Liquido credito de mayorista',
+      tablaAfectada: 'creditos_mayorista',
+      registroId: resultado.id,
+      detalle: `Folio ${resultado.folio}, vendido $${resultado.totalVendido}`,
     });
 
     res.json(resultado);

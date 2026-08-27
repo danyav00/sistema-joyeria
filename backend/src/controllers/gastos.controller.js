@@ -1,4 +1,5 @@
 const prisma = require('../utils/prisma');
+const { registrarAuditoria } = require('../utils/auditoria');
 
 async function crearGasto(req, res) {
   try {
@@ -17,6 +18,14 @@ async function crearGasto(req, res) {
         turnoId: Number(turnoId),
         usuarioId: req.usuario.id,
       },
+    });
+
+    await registrarAuditoria({
+      usuarioId: req.usuario.id,
+      accion: 'Registro gasto',
+      tablaAfectada: 'gastos',
+      registroId: gasto.id,
+      detalle: `${gasto.concepto} - $${gasto.monto}`,
     });
 
     res.status(201).json(gasto);

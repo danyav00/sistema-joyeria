@@ -1,4 +1,5 @@
 const prisma = require('../utils/prisma');
+const { registrarAuditoria } = require('../utils/auditoria');
 
 function generarFolio() {
   return `A-${Date.now()}`;
@@ -58,6 +59,14 @@ async function crearApartado(req, res) {
       });
 
       return apartado;
+    });
+
+    await registrarAuditoria({
+      usuarioId: req.usuario.id,
+      accion: 'Creo apartado',
+      tablaAfectada: 'apartados',
+      registroId: resultado.id,
+      detalle: `Folio ${resultado.folio}, cliente ${resultado.clienteNombre}`,
     });
 
     res.status(201).json(resultado);

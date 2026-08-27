@@ -1,4 +1,5 @@
 const prisma = require('../utils/prisma');
+const { registrarAuditoria } = require('../utils/auditoria');
 const ID_PRODUCTO_CARPETA = 1;
 
 async function crearMayorista(req, res) {
@@ -10,6 +11,14 @@ async function crearMayorista(req, res) {
 
     const mayorista = await prisma.mayorista.create({
       data: { numeroCliente, nombreCompleto, telefono },
+    });
+
+      await registrarAuditoria({
+      usuarioId: req.usuario.id,
+      accion: 'Creo mayorista',
+      tablaAfectada: 'mayoristas',
+      registroId: mayorista.id,
+      detalle: `Cliente ${mayorista.numeroCliente} - ${mayorista.nombreCompleto}`,
     });
 
     res.status(201).json(mayorista);

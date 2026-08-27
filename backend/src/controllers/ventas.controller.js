@@ -1,4 +1,5 @@
 const prisma = require('../utils/prisma');
+const { registrarAuditoria } = require('../utils/auditoria');
 
 function generarFolio(id) {
   return `V-${String(id).padStart(5, '0')}`;
@@ -88,6 +89,14 @@ async function crearVenta(req, res) {
       });
 
       return venta;
+    });
+
+    await registrarAuditoria({
+      usuarioId: req.usuario.id,
+      accion: 'Creo venta',
+      tablaAfectada: 'ventas',
+      registroId: resultado.id,
+      detalle: `Folio ${resultado.folio}, total $${resultado.total}`,
     });
 
     res.status(201).json(resultado);
