@@ -108,8 +108,9 @@ model Producto {
   descripcion     String?
   material        Material
   tipo            String
-  existencia      Int            @default(0)
-  estado          EstadoProducto @default(DISPONIBLE)
+  existencia          Int            @default(0)
+  estado              EstadoProducto @default(DISPONIBLE)
+  tieneDescuentoAplicado Boolean     @default(false)
   fechaCreacion   DateTime       @default(now())
 
   movimientos     MovimientoInventario[]

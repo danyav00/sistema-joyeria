@@ -11,7 +11,7 @@ export default function Inventario() {
   const { usuario } = useAuth();
 
   const [form, setForm] = useState({
-    sku: '', codigoPrecioId: '', nombre: '', descripcion: '', material: 'ORO', tipo: '', existencia: '',
+    sku: '', codigoPrecioId: '', nombre: '', descripcion: '', material: 'ORO', tipo: '', existencia: '', tieneDescuentoAplicado: false,
   });
 
   const [ajustando, setAjustando] = useState(null);
@@ -40,7 +40,7 @@ export default function Inventario() {
     e.preventDefault();
     try {
       await api.post('/productos', form);
-      setForm({ sku: '', codigoPrecioId: '', nombre: '', descripcion: '', material: 'ORO', tipo: '', existencia: '' });
+      setForm({ sku: '', codigoPrecioId: '', nombre: '', descripcion: '', material: 'ORO', tipo: '', existencia: '', tieneDescuentoAplicado: false });
       setMostrarForm(false);
       cargarDatos();
     } catch (err) {
@@ -154,6 +154,15 @@ export default function Inventario() {
             <input type="number" placeholder="Existencia inicial" value={form.existencia} onChange={(e) => setForm({ ...form, existencia: e.target.value })}
               className="bg-transparent border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227] col-span-2" />
 
+            <label className="flex items-center gap-2 text-sm text-[#f5f1e8] col-span-2">
+              <input
+                type="checkbox"
+                checked={form.tieneDescuentoAplicado}
+                onChange={(e) => setForm({ ...form, tieneDescuentoAplicado: e.target.checked })}
+              />
+              Este producto ya tiene descuento aplicado (código +OFF)
+            </label>
+
             <button type="submit" className="bg-[#c9a227] hover:bg-[#b8931f] text-[#1a1815] font-medium py-2 text-sm col-span-2">
               Guardar producto
             </button>
@@ -187,7 +196,12 @@ export default function Inventario() {
               {productosFiltrados.map((p) => (
                 <tr key={p.id} className="border-b border-[#2a251c]/50">
                   <td className="py-3 text-[#f5f1e8]">{p.sku}</td>
-                  <td className="py-3 text-[#f5f1e8]">{p.nombre}</td>
+                  <td className="py-3 text-[#f5f1e8]">
+                    {p.nombre}
+                    {p.tieneDescuentoAplicado && (
+                      <span className="ml-2 text-xs text-amber-400">(OFF)</span>
+                    )}
+                  </td>
 
                   {editando === p.id ? (
                     <>

@@ -2,7 +2,7 @@ const prisma = require('../utils/prisma');
 
 async function crearProducto(req, res) {
   try {
-    const { sku, codigoPrecioId, nombre, descripcion, material, tipo, existencia } = req.body;
+    const { sku, codigoPrecioId, nombre, descripcion, material, tipo, existencia, tieneDescuentoAplicado } = req.body;
 
     if (!sku || !codigoPrecioId || !nombre || !material || !tipo) {
       return res.status(400).json({ error: 'Faltan campos obligatorios' });
@@ -17,6 +17,7 @@ async function crearProducto(req, res) {
         material,
         tipo,
         existencia: Number(existencia) || 0,
+        tieneDescuentoAplicado: !!tieneDescuentoAplicado,
       },
       include: { codigoPrecio: true },
     });
@@ -81,11 +82,15 @@ async function obtenerProducto(req, res) {
 async function actualizarProducto(req, res) {
   try {
     const { id } = req.params;
-    const { nombre, descripcion, material, tipo, codigoPrecioId } = req.body;
+    const { nombre, descripcion, material, tipo, codigoPrecioId, tieneDescuentoAplicado } = req.body;
 
     const producto = await prisma.producto.update({
       where: { id: Number(id) },
-      data: { nombre, descripcion, material, tipo, codigoPrecioId: codigoPrecioId ? Number(codigoPrecioId) : undefined },
+      data: {
+        nombre, descripcion, material, tipo,
+        codigoPrecioId: codigoPrecioId ? Number(codigoPrecioId) : undefined,
+        tieneDescuentoAplicado: tieneDescuentoAplicado !== undefined ? !!tieneDescuentoAplicado : undefined,
+      },
       include: { codigoPrecio: true },
     });
 
