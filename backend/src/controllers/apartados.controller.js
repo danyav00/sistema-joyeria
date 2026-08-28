@@ -1,5 +1,6 @@
 const prisma = require('../utils/prisma');
 const { registrarAuditoria } = require('../utils/auditoria');
+const ExcelJS = require('exceljs');
 
 function generarFolio() {
   return `A-${Date.now().toString().slice(-8)}`;
@@ -226,6 +227,76 @@ async function obtenerApartado(req, res) {
     res.status(500).json({ error: 'Error al obtener el apartado' });
   }
 }
+async function exportarExcel(req, res) {
+  try {
+    const apartados = await prisma.apartado.findMany({
+      include: { producto: true, abonos: { orderBy: { fecha: 'asc' } } },
+      orderBy: [{ clienteNombre: 'asc' }, { fechaApartado: 'desc' }],
+    });
+
+    const workbook = new ExcelJS.Workbook();
+    const hoja = workbook.addWorksheet('Apartados por cliente');
+
+    hoja.columns = [
+      { header: 'Cliente / Detalle', key: 'col1', width: 30 },
+      { header: 'Teléfono / Fecha', key: 'col2', width: 20 },
+      { header: 'Producto / Monto', key: 'col3', width: 20 },
+      { header: 'Total', key: 'col4', width: 15 },
+      { header: 'Saldo pendiente', key: 'col5', width: 15 },
+      { header: 'Estado', key: 'col6', width: 15 },
+    ];
+    hoja.getRow(1).font = { bold: true };
+
+    const clientes = {};
+    apartados.forEach((a) => {
+      const clave = `${a.clienteNombre}|${a.clienteTelefono}`;
+      if (!clientes[clave]) clientes[clave] = [];
+      clientes[clave].push(a);
+    });
+
+    for (const clave in clientes) {
+      const [nombre, telefono] = clave.split('|');
+      const listaApartados = clientes[clave];
+
+      const filaCliente = hoja.addRow({ col1: `CLIENTE: ${nombre}`, col2: `Tel: ${telefono}` });
+      filaCliente.font = { bold: true };
+      filaCliente.eachCell((cell) => {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE4C8' } };
+      });
+
+      listaApartados.forEach((a) => {
+        hoja.addRow({
+          col1: `  Folio: ${a.folio}`,
+          col2: new Date(a.fechaApartado).toLocaleDateString('es-MX'),
+          col3: `${a.producto.sku} - ${a.producto.nombre} x${a.cantidad}`,
+          col4: Number(a.precioTotal),
+          col5: Number(a.saldoPendiente),
+          col6: a.estado,
+        });
+
+        a.abonos.forEach((ab) => {
+          hoja.addRow({
+            col1: '    Abono',
+            col2: new Date(ab.fecha).toLocaleDateString('es-MX'),
+            col3: ab.metodoPago,
+            col4: Number(ab.monto),
+          });
+        });
+      });
+
+      hoja.addRow({});
+    }
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=apartados_por_cliente.xlsx');
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al exportar el reporte a Excel' });
+  }
+}
 
 module.exports = {
   crearApartado,
@@ -234,4 +305,5 @@ module.exports = {
   cancelarApartado,
   listarApartados,
   obtenerApartado,
+  exportarExcel,
 };

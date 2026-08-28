@@ -29,6 +29,17 @@ export default function Apartados() {
     cargarDatos();
   }, []);
 
+  async function descargarExcel() {
+    const respuesta = await api.get('/apartados/excel', { responseType: 'blob' });
+    const url = window.URL.createObjectURL(new Blob([respuesta.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'apartados_por_cliente.xlsx');
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }
+
   async function crearApartado(e) {
     e.preventDefault();
     setMensaje('');
@@ -101,12 +112,20 @@ export default function Apartados() {
           <h2 className="text-2xl text-[#f5f1e8]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
             Apartados
           </h2>
-          <button
-            onClick={() => setMostrarForm(!mostrarForm)}
-            className="bg-[#c9a227] hover:bg-[#b8931f] text-[#1a1815] font-medium px-4 py-2 text-sm transition-colors"
-          >
-            {mostrarForm ? 'Cancelar' : '+ Nuevo apartado'}
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={descargarExcel}
+              className="border border-[#c9a227] text-[#c9a227] px-4 py-2 text-sm hover:bg-[#c9a227]/10 transition-colors"
+            >
+              Descargar Excel
+            </button>
+            <button
+              onClick={() => setMostrarForm(!mostrarForm)}
+              className="bg-[#c9a227] hover:bg-[#b8931f] text-[#1a1815] font-medium px-4 py-2 text-sm transition-colors"
+            >
+              {mostrarForm ? 'Cancelar' : '+ Nuevo apartado'}
+            </button>
+          </div>
         </div>
 
         {mostrarForm && (
