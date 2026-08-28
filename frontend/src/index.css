@@ -1,4 +1,13 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+.light-mode {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+.light-mode img {
+  filter: invert(1) hue-rotate(180deg);
+}
 @media print {
   body * {
     visibility: hidden;
