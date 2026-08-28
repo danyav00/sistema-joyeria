@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../services/api';
 import Layout from '../components/Layout';
+import TicketApartado from '../components/TicketApartado';
 
 export default function Apartados() {
   const [apartados, setApartados] = useState([]);
@@ -9,6 +10,7 @@ export default function Apartados() {
   const [mostrarForm, setMostrarForm] = useState(false);
   const [mensaje, setMensaje] = useState('');
   const [montosAbono, setMontosAbono] = useState({});
+  const [ticketApartado, setTicketApartado] = useState(null);
 
   const [form, setForm] = useState({ productoId: '', clienteNombre: '', clienteTelefono: '', anticipo: '' });
 
@@ -30,9 +32,11 @@ export default function Apartados() {
     e.preventDefault();
     setMensaje('');
     try {
-      await api.post('/apartados', form);
+      const res = await api.post('/apartados', form);
       setForm({ productoId: '', clienteNombre: '', clienteTelefono: '', anticipo: '' });
       setMostrarForm(false);
+      const producto = productos.find((p) => p.id === Number(form.productoId));
+      setTicketApartado({ apartado: { ...res.data, producto }, tipo: 'CREADO' });
       cargarDatos();
     } catch (err) {
       setMensaje(err.response?.data?.error || 'Error al crear el apartado');
@@ -43,8 +47,14 @@ export default function Apartados() {
     const monto = montosAbono[id];
     if (!monto) return;
     try {
-      await api.post(`/apartados/${id}/abono`, { monto: Number(monto), metodoPago: 'EFECTIVO' });
+      const res = await api.post(`/apartados/${id}/abono`, { monto: Number(monto), metodoPago: 'EFECTIVO' });
       setMontosAbono({ ...montosAbono, [id]: '' });
+      const apartadoOriginal = apartados.find((a) => a.id === id);
+      setTicketApartado({
+        apartado: { ...res.data, producto: apartadoOriginal?.producto },
+        tipo: 'ABONO',
+        montoAbono: Number(monto),
+      });
       cargarDatos();
     } catch (err) {
       alert(err.response?.data?.error || 'Error al registrar el abono');
@@ -164,6 +174,26 @@ export default function Apartados() {
           </div>
         )}
       </div>
+
+      {ticketApartado && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 print:bg-white print:relative">
+          <div className="bg-[#1a1815] p-4 max-h-[90vh] overflow-auto print:bg-white print:p-0 print:max-h-none">
+            <div className="print:hidden flex justify-between items-center mb-4 gap-4">
+              <button onClick={() => window.print()} className="bg-[#c9a227] text-[#1a1815] px-4 py-2 text-sm font-medium">
+                Imprimir ticket
+              </button>
+              <button onClick={() => setTicketApartado(null)} className="text-[#8a8478] text-sm hover:text-[#f5f1e8]">
+                Cerrar
+              </button>
+            </div>
+            <TicketApartado
+              apartado={ticketApartado.apartado}
+              tipo={ticketApartado.tipo}
+              montoAbono={ticketApartado.montoAbono}
+            />
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }
