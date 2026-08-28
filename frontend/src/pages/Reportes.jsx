@@ -4,8 +4,48 @@ import Layout from '../components/Layout';
 import Ticket from '../components/Ticket';
 import { useAuth } from '../context/AuthContext';
 
+function TablaDevoluciones() {
+  const [devoluciones, setDevoluciones] = useState([]);
+  const [cargando, setCargando] = useState(true);
+
+  useEffect(() => {
+    api.get('/devoluciones')
+      .then((res) => setDevoluciones(res.data))
+      .finally(() => setCargando(false));
+  }, []);
+
+  if (cargando) return <p className="text-[#8a8478] text-sm">Cargando...</p>;
+  if (devoluciones.length === 0) return <p className="text-[#8a8478] text-sm">Sin devoluciones registradas.</p>;
+
+  return (
+    <table className="w-full text-sm">
+      <thead>
+        <tr className="text-left text-[#8a8478] uppercase text-xs border-b border-[#2a251c]">
+          <th className="pb-3">Folio</th>
+          <th className="pb-3">Fecha</th>
+          <th className="pb-3">Devuelto</th>
+          <th className="pb-3">Nuevo</th>
+          <th className="pb-3">Diferencia</th>
+        </tr>
+      </thead>
+      <tbody>
+        {devoluciones.map((d) => (
+          <tr key={d.id} className="border-b border-[#2a251c]/50">
+            <td className="py-3 text-[#f5f1e8]">{d.folio}</td>
+            <td className="py-3 text-[#8a8478]">{new Date(d.fecha).toLocaleDateString('es-MX')}</td>
+            <td className="py-3 text-[#8a8478]">{d.productoDevuelto?.sku}</td>
+            <td className="py-3 text-[#8a8478]">{d.productoNuevo?.sku}</td>
+            <td className="py-3 text-[#c9a227]">${Number(d.diferenciaPagada).toFixed(2)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 export default function Reportes() {
   const [periodo, setPeriodo] = useState('mensual');
+  const [vista, setVista] = useState('VENTAS');
   const [reporte, setReporte] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [ticketData, setTicketData] = useState(null);
@@ -87,6 +127,20 @@ export default function Reportes() {
             Descargar Excel
           </button>
         </div>
+                <div className="flex gap-2 mb-4">
+          <button
+            onClick={() => setVista('VENTAS')}
+            className={`px-4 py-2 text-sm border ${vista === 'VENTAS' ? 'border-[#c9a227] text-[#c9a227]' : 'border-[#2a251c] text-[#8a8478]'}`}
+          >
+            Ventas
+          </button>
+          <button
+            onClick={() => setVista('DEVOLUCIONES')}
+            className={`px-4 py-2 text-sm border ${vista === 'DEVOLUCIONES' ? 'border-[#c9a227] text-[#c9a227]' : 'border-[#2a251c] text-[#8a8478]'}`}
+          >
+            Devoluciones
+          </button>
+        </div>
 
         <div className="flex gap-2 mb-6">
           {['diario', 'semanal', 'mensual', 'bimestral'].map((p) => (
@@ -102,7 +156,9 @@ export default function Reportes() {
           ))}
         </div>
 
-        {cargando ? (
+        {vista === 'DEVOLUCIONES' ? (
+          <TablaDevoluciones />
+        ) : cargando ? (
           <p className="text-[#8a8478]">Cargando...</p>
         ) : (
           <>
