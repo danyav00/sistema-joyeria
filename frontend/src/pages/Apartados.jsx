@@ -11,8 +11,9 @@ export default function Apartados() {
   const [mensaje, setMensaje] = useState('');
   const [montosAbono, setMontosAbono] = useState({});
   const [ticketApartado, setTicketApartado] = useState(null);
+  const [busquedaProducto, setBusquedaProducto] = useState('');
 
-  const [form, setForm] = useState({ productoId: '', clienteNombre: '', clienteTelefono: '', anticipo: '' });
+  const [form, setForm] = useState({ productoId: '', clienteNombre: '', clienteTelefono: '', anticipo: '', cantidad: 1 });
 
   function cargarDatos() {
     setCargando(true);
@@ -33,7 +34,7 @@ export default function Apartados() {
     setMensaje('');
     try {
       const res = await api.post('/apartados', form);
-      setForm({ productoId: '', clienteNombre: '', clienteTelefono: '', anticipo: '' });
+      setForm({ productoId: '', clienteNombre: '', clienteTelefono: '', anticipo: '', cantidad: 1 });
       setMostrarForm(false);
       const producto = productos.find((p) => p.id === Number(form.productoId));
       setTicketApartado({ apartado: { ...res.data, producto }, tipo: 'CREADO' });
@@ -80,6 +81,12 @@ export default function Apartados() {
     }
   }
 
+  const productoSeleccionado = productos.find((p) => p.id === Number(form.productoId));
+  const productosFiltrados = productos.filter((p) => {
+    const texto = busquedaProducto.toLowerCase();
+    return p.sku.toLowerCase().includes(texto) || p.nombre.toLowerCase().includes(texto);
+  });
+
   const estadoColor = {
     ACTIVO: 'text-amber-400',
     LIQUIDADO: 'text-blue-400',
@@ -104,13 +111,44 @@ export default function Apartados() {
 
         {mostrarForm && (
           <form onSubmit={crearApartado} className="border border-[#2a251c] p-5 mb-6 grid grid-cols-2 gap-4">
+            <input
+              type="text"
+              placeholder="Buscar producto por SKU o nombre..."
+              value={busquedaProducto}
+              onChange={(e) => setBusquedaProducto(e.target.value)}
+              className="bg-transparent border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227] col-span-2"
+            />
+
             <select value={form.productoId} onChange={(e) => setForm({ ...form, productoId: e.target.value })}
               className="bg-[#1a1815] border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227] col-span-2" required>
               <option value="">Selecciona un producto</option>
-              {productos.map((p) => (
-                <option key={p.id} value={p.id}>{p.nombre} — ${Number(p.codigoPrecio.precio).toFixed(2)}</option>
+              {productosFiltrados.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.sku} — {p.nombre} — ${Number(p.codigoPrecio.precio).toFixed(2)} — Existencia: {p.existencia}
+                </option>
               ))}
             </select>
+
+            {productoSeleccionado && (
+              <div className="col-span-2">
+                <label className="text-xs text-[#8a8478] uppercase">Cantidad (máximo {productoSeleccionado.existencia})</label>
+                <input
+                  type="number"
+                  min="1"
+                  max={productoSeleccionado.existencia}
+                  value={form.cantidad}
+                  onChange={(e) => setForm({ ...form, cantidad: e.target.value })}
+                  onBlur={(e) => {
+                    let val = parseInt(e.target.value, 10);
+                    if (isNaN(val) || val < 1) val = 1;
+                    if (val > productoSeleccionado.existencia) val = productoSeleccionado.existencia;
+                    setForm((prev) => ({ ...prev, cantidad: val }));
+                  }}
+                  onFocus={(e) => e.target.select()}
+                  className="w-full bg-transparent border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227]"
+                />
+              </div>
+            )}
 
             <input placeholder="Nombre del cliente" value={form.clienteNombre} onChange={(e) => setForm({ ...form, clienteNombre: e.target.value })}
               className="bg-transparent border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227]" required />
@@ -136,7 +174,7 @@ export default function Apartados() {
             {apartados.map((a) => (
               <div key={a.id} className="border border-[#2a251c] p-4 flex items-center justify-between">
                 <div>
-                  <p className="text-[#f5f1e8] text-sm">{a.producto.nombre} — {a.clienteNombre}</p>
+                  <p className="text-[#f5f1e8] text-sm">{a.producto.nombre} x{a.cantidad} — {a.clienteNombre}</p>
                   <p className="text-[#8a8478] text-xs">
                     Tel: {a.clienteTelefono} • Saldo: ${Number(a.saldoPendiente).toFixed(2)} de ${Number(a.precioTotal).toFixed(2)}
                   </p>

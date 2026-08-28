@@ -2,16 +2,18 @@ const prisma = require('../utils/prisma');
 const { registrarAuditoria } = require('../utils/auditoria');
 
 function generarFolio() {
-  return `A-${Date.now()}`;
+  return `A-${Date.now().toString().slice(-8)}`;
 }
 
 async function crearApartado(req, res) {
   try {
-    const { productoId, clienteNombre, clienteTelefono, anticipo } = req.body;
+    const { productoId, clienteNombre, clienteTelefono, anticipo, cantidad } = req.body;
 
     if (!productoId || !clienteNombre || !clienteTelefono || !anticipo) {
       return res.status(400).json({ error: 'Faltan datos obligatorios' });
     }
+
+    const cantidadFinal = Number(cantidad) || 1;
 
     const resultado = await prisma.$transaction(async (tx) => {
       const producto = await tx.producto.findUnique({
@@ -21,8 +23,10 @@ async function crearApartado(req, res) {
 
       if (!producto) throw new Error('Producto no encontrado');
       if (producto.estado !== 'DISPONIBLE') throw new Error('El producto no esta disponible para apartar');
+      if (producto.existencia < cantidadFinal) throw new Error(`Existencia insuficiente (disponible: ${producto.existencia})`);
 
-      const precioTotal = Number(producto.codigoPrecio.precio);
+      const precioUnitario = Number(producto.codigoPrecio.precio);
+      const precioTotal = precioUnitario * cantidadFinal;
       const minimoRequerido = precioTotal * 0.2;
 
       if (Number(anticipo) < minimoRequerido) {
@@ -33,6 +37,7 @@ async function crearApartado(req, res) {
         data: {
           folio: generarFolio(),
           productoId: producto.id,
+          cantidad: cantidadFinal,
           clienteNombre,
           clienteTelefono,
           usuarioId: req.usuario.id,
@@ -42,16 +47,20 @@ async function crearApartado(req, res) {
         },
       });
 
+      const nuevaExistencia = producto.existencia - cantidadFinal;
       await tx.producto.update({
         where: { id: producto.id },
-        data: { estado: 'APARTADO' },
+        data: {
+          existencia: nuevaExistencia,
+          estado: nuevaExistencia === 0 ? 'APARTADO' : 'DISPONIBLE',
+        },
       });
 
       await tx.movimientoInventario.create({
         data: {
           productoId: producto.id,
           tipoMovimiento: 'APARTADO',
-          cantidad: 1,
+          cantidad: cantidadFinal,
           usuarioId: req.usuario.id,
           referencia: apartado.folio,
           nota: 'Producto apartado',
@@ -156,16 +165,17 @@ async function cancelarApartado(req, res) {
         data: { estado: 'CANCELADO' },
       });
 
+      const producto = await tx.producto.findUnique({ where: { id: apartado.productoId } });
       await tx.producto.update({
         where: { id: apartado.productoId },
-        data: { estado: 'DISPONIBLE' },
+        data: { existencia: producto.existencia + apartado.cantidad, estado: 'DISPONIBLE' },
       });
 
       await tx.movimientoInventario.create({
         data: {
           productoId: apartado.productoId,
           tipoMovimiento: 'CANCELACION',
-          cantidad: 1,
+          cantidad: apartado.cantidad,
           usuarioId: req.usuario.id,
           referencia: apartado.folio,
           nota: 'Apartado cancelado, producto disponible de nuevo',

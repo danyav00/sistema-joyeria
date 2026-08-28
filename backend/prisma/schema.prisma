@@ -217,6 +217,7 @@ model Apartado {
   folio           String         @unique
   productoId      Int
   producto        Producto       @relation(fields: [productoId], references: [id])
+  cantidad        Int            @default(1)
   clienteNombre   String
   clienteTelefono String
   usuarioId       Int
