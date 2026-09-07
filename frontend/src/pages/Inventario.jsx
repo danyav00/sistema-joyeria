@@ -144,7 +144,6 @@ export default function Inventario() {
               <option value="ORO">Oro</option>
               <option value="PLATA">Plata</option>
               <option value="ORO_LAMINADO">Oro laminado</option>
-              <option value="ACERO">Acero</option>
               <option value="OTRO">Otro</option>
             </select>
 
