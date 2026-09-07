@@ -389,19 +389,27 @@ model CreditoMayoristaProducto {
 
   @@map("credito_mayorista_productos")
 }
+enum TipoDevolucion {
+  DEVOLUCION
+  CAMBIO
+}
+
 model Devolucion {
-  id                Int      @id @default(autoincrement())
-  folio             String   @unique
+  id                Int            @id @default(autoincrement())
+  folio             String         @unique
+  tipo              TipoDevolucion @default(CAMBIO)
   ventaOriginalId   Int
-  ventaOriginal     Venta    @relation("VentaOriginalDevolucion", fields: [ventaOriginalId], references: [id])
+  ventaOriginal     Venta          @relation("VentaOriginalDevolucion", fields: [ventaOriginalId], references: [id])
   productoDevueltoId Int
-  productoDevuelto  Producto @relation("ProductoDevuelto", fields: [productoDevueltoId], references: [id])
-  productoNuevoId   Int
-  productoNuevo     Producto @relation("ProductoNuevo", fields: [productoNuevoId], references: [id])
-  diferenciaPagada  Decimal  @db.Decimal(10, 2)
+  productoDevuelto  Producto       @relation("ProductoDevuelto", fields: [productoDevueltoId], references: [id])
+  productoNuevoId   Int?
+  productoNuevo     Producto?      @relation("ProductoNuevo", fields: [productoNuevoId], references: [id])
+  danado            Boolean        @default(false)
+  diferenciaPagada  Decimal        @default(0) @db.Decimal(10, 2)
+  metodoPago        String?
   usuarioId         Int
-  usuario           Usuario  @relation(fields: [usuarioId], references: [id])
-  fecha             DateTime @default(now())
+  usuario           Usuario        @relation(fields: [usuarioId], references: [id])
+  fecha             DateTime       @default(now())
 
   @@map("devoluciones")
 }
