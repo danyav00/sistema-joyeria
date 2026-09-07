@@ -2,6 +2,23 @@ import { useEffect, useState } from 'react';
 import api from '../services/api';
 import Layout from '../components/Layout';
 import Ticket from '../components/Ticket';
+import logo from '../assets/logo.png';
+
+function redondear(num) {
+  return Math.round((Number(num) + Number.EPSILON) * 100) / 100;
+}
+
+function etiquetaMaterial(producto) {
+  if (producto.material === 'PLATA') return ' Plata';
+  if (producto.material === 'ORO') {
+    return producto.tipo?.toLowerCase().includes('broquel') ? ' 10K' : ' Oro';
+  }
+  return '';
+}
+
+function nombreConMaterial(producto) {
+  return `${producto.nombre}${etiquetaMaterial(producto)}`;
+}
 
 export default function Ventas() {
   const [turno, setTurno] = useState(null);
@@ -45,8 +62,13 @@ export default function Ventas() {
   function precioConDescuento(producto) {
     const base = Number(producto.codigoPrecio.precio);
     if (producto.tieneDescuentoAplicado) return base;
-    if (tipoDescuento === 'MAYORISTA') return base * 0.5;
-    if (tipoDescuento === 'LOCATARIO') return base * 0.8;
+
+    if (tipoDescuento === 'MAYORISTA') {
+      return redondear(base * 0.5);
+    }
+    if (tipoDescuento === 'LOCATARIO') {
+      return redondear(base * 0.8);
+    }
     return base;
   }
 
@@ -60,7 +82,7 @@ export default function Ventas() {
     } else {
       setCarrito([...carrito, {
         productoId: producto.id,
-        nombre: producto.nombre,
+        nombre: nombreConMaterial(producto),
         sku: producto.sku,
         existenciaMaxima: producto.existencia,
         tieneDescuentoAplicado: producto.tieneDescuentoAplicado,
@@ -122,7 +144,6 @@ export default function Ventas() {
     }
   }
 
-  // Recalcula los precios del carrito cuando cambia el tipo de descuento
   useEffect(() => {
     setCarrito((prev) => prev.map((item) => {
       const producto = productos.find((p) => p.id === item.productoId);
@@ -132,8 +153,9 @@ export default function Ventas() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tipoDescuento]);
 
-  const total = carrito.reduce((suma, item) => suma + item.precio * (Number(item.cantidad) || 0), 0);
-  const totalPagos = pagos.reduce((suma, p) => suma + (Number(p.monto) || 0), 0);
+  const total = redondear(carrito.reduce((suma, item) => suma + item.precio * (Number(item.cantidad) || 0), 0));
+  const totalPagos = redondear(pagos.reduce((suma, p) => suma + (Number(p.monto) || 0), 0));
+  const diferencia = redondear(totalPagos - total);
 
   function actualizarPago(index, campo, valor) {
     const nuevosPagos = [...pagos];
@@ -145,16 +167,38 @@ export default function Ventas() {
     setPagos([...pagos, { metodoPago: 'EFECTIVO', monto: '' }]);
   }
 
+  function quitarPago(index) {
+    if (pagos.length <= 1) return;
+    setPagos(pagos.filter((_, i) => i !== index));
+  }
+
+  const productosFiltrados = productos.filter((p) => {
+    const texto = busquedaSku.trim().toLowerCase();
+    if (!texto) return true;
+    return p.sku.toLowerCase().includes(texto) || p.nombre.toLowerCase().includes(texto);
+  });
+
   async function confirmarVenta() {
     setMensaje('');
     try {
+      let pagosAEnviar = pagos.map((p) => ({ metodoPago: p.metodoPago, monto: redondear(Number(p.monto) || 0) }));
+      if (diferencia > 0) {
+        let restante = diferencia;
+        for (let i = pagosAEnviar.length - 1; i >= 0 && restante > 0; i--) {
+          const reduccion = Math.min(pagosAEnviar[i].monto, restante);
+          pagosAEnviar[i].monto = redondear(pagosAEnviar[i].monto - reduccion);
+          restante = redondear(restante - reduccion);
+        }
+        pagosAEnviar = pagosAEnviar.filter((p) => p.monto > 0);
+      }
+
       const resVenta = await api.post('/ventas', {
         turnoId: turno.id,
         tipoVenta: tipoDescuento === 'MAYORISTA' ? 'MAYOREO' : 'MENUDEO',
         tipoDescuento,
         mayoristaId: mayoristaSeleccionado ? mayoristaSeleccionado.id : undefined,
         productos: carrito.map((item) => ({ productoId: item.productoId, cantidad: Number(item.cantidad) })),
-        pagos: pagos.map((p) => ({ metodoPago: p.metodoPago, monto: Number(p.monto) })),
+        pagos: pagosAEnviar,
         descuento: 0,
       });
 
@@ -214,14 +258,19 @@ export default function Ventas() {
     <Layout>
       <div className="p-8 grid grid-cols-3 gap-6" style={{ fontFamily: "'Inter', sans-serif" }}>
         <div className="col-span-2">
-          <h2 className="text-2xl text-[#f5f1e8] mb-4" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-            Punto de Venta
-          </h2>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-9 h-9 bg-white rounded-full flex items-center justify-center overflow-hidden p-1 flex-shrink-0">
+              <img src={logo} alt="Nixca Joyería" className="w-full h-full object-contain" />
+            </div>
+            <h2 className="text-2xl text-[#f5f1e8]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+              Punto de Venta
+            </h2>
+          </div>
 
           <div className="mb-4">
             <p className="text-xs text-[#8a8478] uppercase mb-2">Tipo de venta</p>
             <div className="flex gap-2 mb-2">
-              {['NORMAL', 'LOCATARIO', 'MAYORISTA'].map((tipo) => (
+              {['NORMAL', 'MAYORISTA', 'LOCATARIO'].map((tipo) => (
                 <button
                   key={tipo}
                   onClick={() => cambiarTipoDescuento(tipo)}
@@ -229,14 +278,14 @@ export default function Ventas() {
                     tipoDescuento === tipo ? 'border-[#c9a227] text-[#c9a227]' : 'border-[#2a251c] text-[#8a8478]'
                   }`}
                 >
-                  {tipo === 'NORMAL' ? 'Venta normal' : tipo === 'LOCATARIO' ? 'Locatario (-20%)' : 'Mayorista (-50%)'}
+                  {tipo === 'NORMAL' ? 'Venta normal' : tipo === 'MAYORISTA' ? 'Mayoreo (-50%)' : 'Locatario (-20%)'}
                 </button>
               ))}
             </div>
 
             {tipoDescuento !== 'NORMAL' && (
               <p className="text-xs text-amber-400 border-l-2 border-amber-400 pl-2 mb-2">
-                ⚠ Se aplicará {tipoDescuento === 'MAYORISTA' ? '50%' : '20%'} de descuento a los productos sin "+OFF".
+                ⚠ Se aplicará descuento a los productos sin "+OFF" ({tipoDescuento === 'MAYORISTA' ? '50%' : '20%'}).
               </p>
             )}
 
@@ -272,10 +321,10 @@ export default function Ventas() {
             )}
           </div>
 
-          <form onSubmit={buscarPorSku} className="flex gap-2 mb-6">
+          <form onSubmit={buscarPorSku} className="flex gap-2 mb-4">
             <input
               type="text"
-              placeholder="Escanea o escribe el SKU..."
+              placeholder="Escanea, escribe el SKU o busca por nombre..."
               value={busquedaSku}
               onChange={(e) => setBusquedaSku(e.target.value)}
               autoFocus
@@ -285,17 +334,17 @@ export default function Ventas() {
               Agregar
             </button>
           </form>
-          {mensajeBusqueda && <p className="text-red-400 text-xs -mt-4 mb-4">{mensajeBusqueda}</p>}
+          {mensajeBusqueda && <p className="text-red-400 text-xs -mt-2 mb-4">{mensajeBusqueda}</p>}
 
           <div className="grid grid-cols-2 gap-3">
-            {productos.map((p) => (
+            {productosFiltrados.map((p) => (
               <button
                 key={p.id}
                 onClick={() => agregarAlCarrito(p)}
                 className="border border-[#2a251c] hover:border-[#c9a227] p-4 text-left transition-colors"
               >
                 <p className="text-[#f5f1e8] text-sm">
-                  {p.nombre} {p.tieneDescuentoAplicado && <span className="text-amber-400 text-xs">(OFF)</span>}
+                  {nombreConMaterial(p)} {p.tieneDescuentoAplicado && <span className="text-amber-400 text-xs">(OFF)</span>}
                 </p>
                 <p className="text-[#8a8478] text-xs">{p.sku} • {p.material} • Existencia: {p.existencia}</p>
                 <p className="text-[#c9a227] mt-1">${precioConDescuento(p).toFixed(2)}</p>
@@ -315,6 +364,7 @@ export default function Ventas() {
                 <div key={item.productoId} className="flex justify-between items-center text-sm">
                   <div className="flex-1">
                     <p className="text-[#f5f1e8]">{item.nombre}</p>
+                    <p className="text-[#8a8478] text-xs">{item.sku}</p>
                     <div className="flex items-center gap-2">
                       <input
                         type="number"
@@ -327,7 +377,7 @@ export default function Ventas() {
                         className="bg-transparent border border-[#3a352c] text-[#f5f1e8] text-xs px-2 py-0.5 w-12"
                       />
                       <p className="text-[#8a8478] text-xs">
-                        x ${item.precio.toFixed(2)} = ${(item.precio * (Number(item.cantidad) || 0)).toFixed(2)}
+                        x ${item.precio.toFixed(2)} = ${redondear(item.precio * (Number(item.cantidad) || 0)).toFixed(2)}
                       </p>
                     </div>
                   </div>
@@ -349,7 +399,7 @@ export default function Ventas() {
           <div className="space-y-2 mb-4">
             <p className="text-xs text-[#8a8478] uppercase">Pagos</p>
             {pagos.map((pago, index) => (
-              <div key={index} className="flex gap-2">
+              <div key={index} className="flex gap-2 items-center">
                 <select
                   value={pago.metodoPago}
                   onChange={(e) => actualizarPago(index, 'metodoPago', e.target.value)}
@@ -365,14 +415,13 @@ export default function Ventas() {
                   placeholder="Monto"
                   value={pago.monto}
                   onChange={(e) => actualizarPago(index, 'monto', e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && carrito.length > 0 && totalPagos === total) {
-                      e.preventDefault();
-                      confirmarVenta();
-                    }
-                  }}
                   className="bg-transparent border border-[#3a352c] text-[#f5f1e8] text-xs px-2 py-1.5 w-20"
                 />
+                {pagos.length > 1 && (
+                  <button onClick={() => quitarPago(index)} className="text-red-400 text-xs">
+                    ✕
+                  </button>
+                )}
               </div>
             ))}
             <button onClick={agregarPago} className="text-[#8a8478] text-xs hover:text-[#c9a227]">
@@ -380,16 +429,22 @@ export default function Ventas() {
             </button>
           </div>
 
-          <p className="text-xs text-[#8a8478] mb-3">
-            Pagado: ${totalPagos.toFixed(2)} {totalPagos !== total && `(faltan $${(total - totalPagos).toFixed(2)})`}
+          <p className="text-xs mb-3">
+            <span className="text-[#8a8478]">Pagado: ${totalPagos.toFixed(2)}</span>
+            {diferencia > 0.004 && (
+              <span className="text-green-400 font-bold uppercase"> (SOBRAN ${diferencia.toFixed(2)})</span>
+            )}
+            {diferencia < -0.004 && (
+              <span className="text-red-400 uppercase"> (FALTAN ${Math.abs(diferencia).toFixed(2)})</span>
+            )}
           </p>
 
           {mensaje && <p className="text-xs text-amber-400 mb-3">{mensaje}</p>}
 
           <button
             onClick={confirmarVenta}
-            disabled={carrito.length === 0 || totalPagos !== total || (tipoDescuento === 'MAYORISTA' && !mayoristaSeleccionado)}
-            className="w-full bg-[#c9a227] hover:bg-[#b8931f] text-[#1a1815] font-medium py-2.5 text-sm disabled:opacity-40"
+            disabled={carrito.length === 0 || totalPagos < total - 0.004 || (tipoDescuento === 'MAYORISTA' && !mayoristaSeleccionado)}
+            className="w-full bg-[#c9a227] hover:bg-[#e0b52c] text-[#1a1815] font-medium py-2.5 text-sm disabled:opacity-40 disabled:hover:bg-[#c9a227] transition-colors"
           >
             Confirmar venta
           </button>
