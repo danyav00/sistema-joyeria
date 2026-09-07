@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../services/api';
 import Layout from '../components/Layout';
 import TicketApartado from '../components/TicketApartado';
+import Ticket from '../components/Ticket';
 
 export default function Apartados() {
   const [apartados, setApartados] = useState([]);
@@ -11,6 +12,7 @@ export default function Apartados() {
   const [mensaje, setMensaje] = useState('');
   const [montosAbono, setMontosAbono] = useState({});
   const [ticketApartado, setTicketApartado] = useState(null);
+    const [ticketVentaLiquidacion, setTicketVentaLiquidacion] = useState(null);
   const [busquedaProducto, setBusquedaProducto] = useState('');
 
   const [form, setForm] = useState({ productoId: '', clienteNombre: '', clienteTelefono: '', anticipo: '', cantidad: 1 });
@@ -71,6 +73,25 @@ export default function Apartados() {
     } catch (err) {
       alert(err.response?.data?.error || 'Error al registrar el abono');
     }
+  }
+    function generarTicketVenta(apartado) {
+    const ventaSimulada = {
+      folio: apartado.folio,
+      fecha: apartado.fechaApartado,
+      usuario: { nombre: apartado.usuarioNombre || '—' },
+      detalles: [{
+        id: apartado.id,
+        producto: apartado.producto,
+        cantidad: apartado.cantidad,
+        precioUnitario: Number(apartado.precioTotal) / apartado.cantidad,
+        subtotal: Number(apartado.precioTotal),
+      }],
+      subtotal: Number(apartado.precioTotal),
+      descuento: 0,
+      total: Number(apartado.precioTotal),
+      pagos: [{ id: 1, metodoPago: 'VARIOS (anticipo + abonos)', monto: Number(apartado.precioTotal) }],
+    };
+    setTicketVentaLiquidacion({ venta: ventaSimulada });
   }
 
   async function entregar(id) {
@@ -220,10 +241,15 @@ export default function Apartados() {
                     </>
                   )}
 
-                  {a.estado === 'LIQUIDADO' && (
-                    <button onClick={() => entregar(a.id)} className="text-xs text-green-400 hover:underline">
-                      Marcar como entregado
-                    </button>
+                                    {a.estado === 'LIQUIDADO' && (
+                    <>
+                      <button onClick={() => generarTicketVenta(a)} className="text-xs text-[#c9a227] hover:underline">
+                        Liquidar (ticket de venta)
+                      </button>
+                      <button onClick={() => entregar(a.id)} className="text-xs text-green-400 hover:underline">
+                        Marcar como entregado
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -232,7 +258,7 @@ export default function Apartados() {
         )}
       </div>
 
-      {ticketApartado && (
+            {ticketApartado && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 print:bg-white print:relative">
           <div className="bg-[#1a1815] p-4 max-h-[90vh] overflow-auto print:bg-white print:p-0 print:max-h-none">
             <div className="print:hidden flex justify-between items-center mb-4 gap-4">
@@ -248,6 +274,22 @@ export default function Apartados() {
               tipo={ticketApartado.tipo}
               montoAbono={ticketApartado.montoAbono}
             />
+          </div>
+        </div>
+      )}
+
+      {ticketVentaLiquidacion && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 print:bg-white print:relative">
+          <div className="bg-[#1a1815] p-4 max-h-[90vh] overflow-auto print:bg-white print:p-0 print:max-h-none">
+            <div className="print:hidden flex justify-between items-center mb-4 gap-4">
+              <button onClick={() => window.print()} className="bg-[#c9a227] text-[#1a1815] px-4 py-2 text-sm font-medium">
+                Imprimir ticket
+              </button>
+              <button onClick={() => setTicketVentaLiquidacion(null)} className="text-[#8a8478] text-sm hover:text-[#f5f1e8]">
+                Cerrar
+              </button>
+            </div>
+            <Ticket venta={ticketVentaLiquidacion.venta} tipoTicket="VENTA" />
           </div>
         </div>
       )}
