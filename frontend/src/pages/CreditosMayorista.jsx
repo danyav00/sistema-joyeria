@@ -27,6 +27,9 @@ export default function CreditosMayorista() {
   const [seleccionLiquidacion, setSeleccionLiquidacion] = useState({});
   const [metodoPagoLiquidacion, setMetodoPagoLiquidacion] = useState('EFECTIVO');
   const [mensajeLiquidacion, setMensajeLiquidacion] = useState('');
+  const [llevaNuevo, setLlevaNuevo] = useState(false);
+  const [productosNuevoCredito, setProductosNuevoCredito] = useState({});
+  const [busquedaProductoNuevo, setBusquedaProductoNuevo] = useState('');
 
   const [ticketCredito, setTicketCredito] = useState(null);
   const [expandido, setExpandido] = useState({});
@@ -97,8 +100,8 @@ export default function CreditosMayorista() {
         productos: productosArray,
       });
       setForm({ mayoristaId: '', mayoristaTexto: '', productosSeleccionados: {} });
-      setMostrarForm(false);      setTicketCredito({ credito: res.data, tipo: 'ABIERTO', versiculo: res.data.versiculo, atendio: res.data.usuario?.nombre });
-
+      setMostrarForm(false);
+      setTicketCredito({ credito: res.data, tipo: 'ABIERTO', versiculo: res.data.versiculo, atendio: res.data.usuario?.nombre });
       cargarDatos();
     } catch (err) {
       setMensaje(err.response?.data?.error || 'Error al abrir el credito');
@@ -111,10 +114,37 @@ export default function CreditosMayorista() {
     credito.productos.forEach((p) => { inicial[p.id] = 'PENDIENTE'; });
     setSeleccionLiquidacion(inicial);
     setMensajeLiquidacion('');
+    setLlevaNuevo(false);
+    setProductosNuevoCredito({});
   }
 
   function marcarEstadoPieza(lineaId, estado) {
     setSeleccionLiquidacion((prev) => ({ ...prev, [lineaId]: prev[lineaId] === estado ? 'PENDIENTE' : estado }));
+  }
+
+  function toggleProductoNuevoCredito(productoId) {
+    setProductosNuevoCredito((prev) => {
+      const nuevo = { ...prev };
+      if (nuevo[productoId] !== undefined) {
+        delete nuevo[productoId];
+      } else {
+        nuevo[productoId] = 1;
+      }
+      return nuevo;
+    });
+  }
+
+  function actualizarCantidadProductoNuevo(productoId, cantidadTexto) {
+    setProductosNuevoCredito((prev) => ({ ...prev, [productoId]: cantidadTexto }));
+  }
+
+  function validarCantidadProductoNuevo(productoId, maxExistencia) {
+    setProductosNuevoCredito((prev) => {
+      let cantidadFinal = parseInt(prev[productoId], 10);
+      if (isNaN(cantidadFinal) || cantidadFinal < 1) cantidadFinal = 1;
+      if (cantidadFinal > maxExistencia) cantidadFinal = maxExistencia;
+      return { ...prev, [productoId]: cantidadFinal };
+    });
   }
 
   async function liquidar(credito) {
@@ -138,14 +168,27 @@ export default function CreditosMayorista() {
         .filter((p) => !productosDevueltos.includes(p.id))
         .reduce((suma, p) => suma + Number(p.precioAlMomento), 0);
 
+      const productosNuevoArray = llevaNuevo
+        ? Object.entries(productosNuevoCredito).flatMap(
+            ([productoId, cantidad]) => Array(Number(cantidad)).fill({ productoId: Number(productoId) })
+          )
+        : [];
+
       const res = await api.put(`/creditos-mayorista/${credito.id}/liquidar`, {
         productosVendidos,
         productosDevueltos,
         turnoId: turnoRes.data.id,
         pagos: [{ metodoPago: metodoPagoLiquidacion, monto: totalAPagar }],
+        productosNuevoCredito: productosNuevoArray,
       });
 
-         setTicketCredito({ credito: res.data, tipo: 'LIQUIDADO', versiculo: res.data.versiculo, atendio: res.data.usuario?.nombre });
+      setTicketCredito({
+        credito: res.data,
+        tipo: 'LIQUIDADO',
+        versiculo: res.data.versiculo,
+        atendio: res.data.usuario?.nombre,
+        creditoNuevo: res.data.creditoNuevo,
+      });
       setLiquidando(null);
       cargarDatos();
     } catch (err) {
@@ -160,8 +203,20 @@ export default function CreditosMayorista() {
     return suma + precioConDescuento * (Number(cantidad) || 0);
   }, 0);
 
+  const totalNuevoCredito = Object.entries(productosNuevoCredito).reduce((suma, [productoId, cantidad]) => {
+    const producto = productos.find((p) => p.id === Number(productoId));
+    if (!producto) return suma;
+    const precioConDescuento = Math.round(Number(producto.codigoPrecio.precio) * 0.5 * 100) / 100;
+    return suma + precioConDescuento * (Number(cantidad) || 0);
+  }, 0);
+
   const productosFiltrados = productos.filter((p) => {
     const texto = busquedaProducto.toLowerCase();
+    return p.sku.toLowerCase().includes(texto) || p.nombre.toLowerCase().includes(texto);
+  });
+
+  const productosFiltradosNuevo = productos.filter((p) => {
+    const texto = busquedaProductoNuevo.toLowerCase();
     return p.sku.toLowerCase().includes(texto) || p.nombre.toLowerCase().includes(texto);
   });
 
@@ -178,7 +233,7 @@ export default function CreditosMayorista() {
       c.mayorista?.numeroCliente.toLowerCase().includes(texto)
     );
   });
-  
+
   return (
     <Layout>
       <div className="p-8" style={{ fontFamily: "'Inter', sans-serif" }}>
@@ -382,6 +437,61 @@ export default function CreditosMayorista() {
                         <option value="DEPOSITO">Depósito</option>
                       </select>
 
+                      <label className="flex items-center gap-2 text-xs text-[#f5f1e8] mb-3">
+                        <input type="checkbox" checked={llevaNuevo} onChange={(e) => setLlevaNuevo(e.target.checked)} />
+                        El mayorista se lleva piezas nuevas en este mismo momento (abre un crédito nuevo)
+                      </label>
+
+                      {llevaNuevo && (
+                        <div className="border border-[#2a251c] p-3 mb-3">
+                          <p className="text-xs text-[#8a8478] uppercase mb-2">Buscar piezas nuevas (Oro Laminado, 50% descuento)</p>
+                          <input
+                            type="text"
+                            placeholder="Buscar por SKU o nombre..."
+                            value={busquedaProductoNuevo}
+                            onChange={(e) => setBusquedaProductoNuevo(e.target.value)}
+                            className="w-full bg-transparent border border-[#3a352c] focus:border-[#c9a227] text-[#f5f1e8] px-3 py-2 text-xs outline-none mb-2"
+                          />
+                          <div className="space-y-2 max-h-48 overflow-auto mb-3">
+                            {productosFiltradosNuevo.map((p) => {
+                              const seleccionado = productosNuevoCredito[p.id];
+                              const precioConDescuento = Math.round(Number(p.codigoPrecio.precio) * 0.5 * 100) / 100;
+                              return (
+                                <div
+                                  key={p.id}
+                                  className={`border p-2 text-xs flex items-center gap-2 ${
+                                    seleccionado !== undefined ? 'border-[#c9a227]' : 'border-[#2a251c]'
+                                  }`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={seleccionado !== undefined}
+                                    onChange={() => toggleProductoNuevoCredito(p.id)}
+                                  />
+                                  <div className="flex-1">
+                                    <p className="text-[#f5f1e8]">{nombreConMaterial(p)} — {p.sku}</p>
+                                    <p className="text-[#8a8478]">${precioConDescuento.toFixed(2)} — Existencia: {p.existencia}</p>
+                                  </div>
+                                  {seleccionado !== undefined && (
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      max={p.existencia}
+                                      value={seleccionado}
+                                      onChange={(e) => actualizarCantidadProductoNuevo(p.id, e.target.value)}
+                                      onBlur={() => validarCantidadProductoNuevo(p.id, p.existencia)}
+                                      onFocus={(e) => e.target.select()}
+                                      className="bg-transparent border border-[#3a352c] text-[#f5f1e8] text-xs px-2 py-1 w-12"
+                                    />
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <p className="text-xs text-[#c9a227]">Nuevo crédito: ${totalNuevoCredito.toFixed(2)}</p>
+                        </div>
+                      )}
+
                       {mensajeLiquidacion && <p className="text-red-400 text-xs mb-3">{mensajeLiquidacion}</p>}
 
                       <div className="flex gap-3">
@@ -417,6 +527,12 @@ export default function CreditosMayorista() {
               </button>
             </div>
             <TicketCredito credito={ticketCredito.credito} tipo={ticketCredito.tipo} versiculo={ticketCredito.versiculo} atendio={ticketCredito.atendio} />
+            {ticketCredito.creditoNuevo && (
+              <div className="mt-4 print:mt-0 print:break-before-page">
+                <p className="text-xs text-[#c9a227] mb-2 print:hidden">-- Crédito nuevo generado --</p>
+                <TicketCredito credito={ticketCredito.creditoNuevo} tipo="ABIERTO" versiculo={ticketCredito.versiculo} atendio={ticketCredito.atendio} />
+              </div>
+            )}
           </div>
         </div>
       )}

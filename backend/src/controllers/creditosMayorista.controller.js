@@ -94,7 +94,8 @@ async function abrirCredito(req, res) {
 
     const mayoristaCompleto = await prisma.mayorista.findUnique({ where: { id: resultado.mayoristaId } });
 
-    res.status(201).json({ ...resultado, mayorista: mayoristaCompleto, versiculo: obtenerVersiculoAleatorio(), usuario: { nombre: req.usuario.nombre } }); } catch (error) {
+    res.status(201).json({ ...resultado, mayorista: mayoristaCompleto, versiculo: obtenerVersiculoAleatorio(), usuario: { nombre: req.usuario.nombre } });
+  } catch (error) {
     console.error(error);
     res.status(400).json({ error: error.message || 'Error al abrir el credito' });
   }
@@ -139,7 +140,7 @@ async function obtenerCredito(req, res) {
 async function liquidarCredito(req, res) {
   try {
     const { id } = req.params;
-    const { productosVendidos, productosDevueltos, turnoId, pagos } = req.body;
+    const { productosVendidos, productosDevueltos, turnoId, pagos, productosNuevoCredito } = req.body;
 
     if (!turnoId || !pagos) {
       return res.status(400).json({ error: 'Faltan datos obligatorios' });
@@ -261,23 +262,100 @@ async function liquidarCredito(req, res) {
         },
       });
 
-      return creditoActualizado;
+      let creditoNuevo = null;
+
+      if (productosNuevoCredito && productosNuevoCredito.length > 0) {
+        let totalCreditoNuevo = 0;
+        const productosDataNuevo = [];
+
+        for (const item of productosNuevoCredito) {
+          const productoNuevo = await tx.producto.findUnique({
+            where: { id: item.productoId },
+            include: { codigoPrecio: true },
+          });
+
+          if (!productoNuevo) throw new Error(`Producto ${item.productoId} no encontrado`);
+          if (productoNuevo.estado !== 'DISPONIBLE') throw new Error(`Producto ${productoNuevo.nombre} no esta disponible`);
+          if (productoNuevo.existencia < 1) throw new Error(`Producto ${productoNuevo.nombre} sin existencia`);
+          if (productoNuevo.material !== 'ORO_LAMINADO') throw new Error(`Producto ${productoNuevo.nombre} no es Oro Laminado`);
+
+          const precioBase = Number(productoNuevo.codigoPrecio.precio);
+          const precioConDescuento = Math.round(precioBase * 0.5 * 100) / 100;
+          totalCreditoNuevo += precioConDescuento;
+
+          productosDataNuevo.push({ productoId: productoNuevo.id, precioAlMomento: precioConDescuento });
+
+          const nuevaExistenciaProd = productoNuevo.existencia - 1;
+          await tx.producto.update({
+            where: { id: productoNuevo.id },
+            data: {
+              existencia: nuevaExistenciaProd,
+              estado: nuevaExistenciaProd === 0 ? 'APARTADO' : 'DISPONIBLE',
+            },
+          });
+
+          await tx.movimientoInventario.create({
+            data: {
+              productoId: productoNuevo.id,
+              tipoMovimiento: 'AJUSTE',
+              cantidad: -1,
+              usuarioId: req.usuario.id,
+              nota: 'Entregado a mayorista en consignacion (continuacion de liquidacion)',
+            },
+          });
+        }
+
+        const fechaLimiteNueva = new Date();
+        fechaLimiteNueva.setDate(fechaLimiteNueva.getDate() + DIAS_LIMITE);
+
+        creditoNuevo = await tx.creditoMayorista.create({
+          data: {
+            folio: generarFolio(),
+            mayoristaId: credito.mayoristaId,
+            totalCredito: totalCreditoNuevo,
+            fechaLimite: fechaLimiteNueva,
+            usuarioId: req.usuario.id,
+            productos: { create: productosDataNuevo },
+          },
+          include: { productos: { include: { producto: true } } },
+        });
+      }
+
+      return { creditoActualizado, creditoNuevo };
     });
 
     await registrarAuditoria({
       usuarioId: req.usuario.id,
       accion: 'Liquido credito de mayorista',
       tablaAfectada: 'creditos_mayorista',
-      registroId: resultado.id,
-      detalle: `Folio ${resultado.folio}, vendido $${resultado.totalVendido}`,
+      registroId: resultado.creditoActualizado.id,
+      detalle: `Folio ${resultado.creditoActualizado.folio}, vendido $${resultado.creditoActualizado.totalVendido}`,
     });
 
-        const creditoCompleto = await prisma.creditoMayorista.findUnique({
-      where: { id: resultado.id },
+    const creditoCompleto = await prisma.creditoMayorista.findUnique({
+      where: { id: resultado.creditoActualizado.id },
       include: { mayorista: true, productos: { include: { producto: true } } },
     });
 
-    res.json({ ...creditoCompleto, versiculo: obtenerVersiculoAleatorio(), usuario: { nombre: req.usuario.nombre } });
+    let creditoNuevoCompleto = null;
+    if (resultado.creditoNuevo) {
+      await registrarAuditoria({
+        usuarioId: req.usuario.id,
+        accion: 'Abrio credito de mayorista (continuacion de liquidacion)',
+        tablaAfectada: 'creditos_mayorista',
+        registroId: resultado.creditoNuevo.id,
+        detalle: `Folio ${resultado.creditoNuevo.folio}, total $${resultado.creditoNuevo.totalCredito}`,
+      });
+      const mayoristaCompleto = await prisma.mayorista.findUnique({ where: { id: creditoCompleto.mayoristaId } });
+      creditoNuevoCompleto = { ...resultado.creditoNuevo, mayorista: mayoristaCompleto };
+    }
+
+    res.json({
+      ...creditoCompleto,
+      versiculo: obtenerVersiculoAleatorio(),
+      usuario: { nombre: req.usuario.nombre },
+      creditoNuevo: creditoNuevoCompleto,
+    });
   } catch (error) {
     console.error(error);
     res.status(400).json({ error: error.message || 'Error al liquidar el credito' });
