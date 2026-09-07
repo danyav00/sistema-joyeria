@@ -312,6 +312,9 @@ model Corte {
   totalTarjeta         Decimal  @db.Decimal(10, 2)
   totalTransferencia   Decimal  @db.Decimal(10, 2)
   totalDeposito        Decimal  @db.Decimal(10, 2)
+  totalOro             Decimal  @default(0) @db.Decimal(10, 2)
+  totalPlata           Decimal  @default(0) @db.Decimal(10, 2)
+  totalOroLaminado     Decimal  @default(0) @db.Decimal(10, 2)
   totalFinal           Decimal  @db.Decimal(10, 2)
   usuarioId            Int
   usuario              Usuario  @relation(fields: [usuarioId], references: [id])

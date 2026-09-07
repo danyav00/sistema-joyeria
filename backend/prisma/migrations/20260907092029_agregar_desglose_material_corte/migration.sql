@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "cortes" ADD COLUMN     "totalOro" DECIMAL(10,2) NOT NULL DEFAULT 0,
+ADD COLUMN     "totalOroLaminado" DECIMAL(10,2) NOT NULL DEFAULT 0,
+ADD COLUMN     "totalPlata" DECIMAL(10,2) NOT NULL DEFAULT 0;

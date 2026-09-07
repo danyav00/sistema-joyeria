@@ -74,11 +74,16 @@ export default function Cortes() {
                 <p className="text-[#f5f1e8] text-sm">{c.turno.tipo} — {new Date(c.fecha).toLocaleDateString('es-MX')}</p>
                 <p className="text-[#c9a227]">${Number(c.totalFinal).toFixed(2)}</p>
               </div>
-              <div className="grid grid-cols-4 gap-3 text-xs text-[#8a8478] mb-2">
+                           <div className="grid grid-cols-4 gap-3 text-xs text-[#8a8478] mb-2">
                 <p>Ventas: ${Number(c.totalVentas).toFixed(2)}</p>
                 <p>Gastos: ${Number(c.totalGastos).toFixed(2)}</p>
                 <p>Efectivo: ${Number(c.totalEfectivo).toFixed(2)}</p>
                 <p>Tarjeta: ${Number(c.totalTarjeta).toFixed(2)}</p>
+              </div>
+              <div className="grid grid-cols-3 gap-3 text-xs text-[#8a8478]">
+                <p>Oro: ${Number(c.totalOro || 0).toFixed(2)}</p>
+                <p>Plata: ${Number(c.totalPlata || 0).toFixed(2)}</p>
+                <p>Oro Laminado: ${Number(c.totalOroLaminado || 0).toFixed(2)}</p>
               </div>
               {usuario?.rol === 'ADMINISTRADOR' && (
                 <button onClick={() => eliminarCorte(c.id)} className="text-xs text-red-400 hover:underline">

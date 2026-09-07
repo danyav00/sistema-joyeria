@@ -11,9 +11,9 @@ async function generarCorte(req, res) {
       const corteExistente = await tx.corte.findUnique({ where: { turnoId: Number(turnoId) } });
       if (corteExistente) throw new Error('Este turno ya tiene un corte generado');
 
-      const ventas = await tx.venta.findMany({
+            const ventas = await tx.venta.findMany({
         where: { turnoId: Number(turnoId) },
-        include: { pagos: true },
+        include: { pagos: true, detalles: { include: { producto: true } } },
       });
 
       const gastos = await tx.gasto.findMany({ where: { turnoId: Number(turnoId) } });
@@ -24,7 +24,9 @@ async function generarCorte(req, res) {
         .filter((v) => v.estado === 'CON_DEVOLUCION')
         .reduce((suma, v) => suma + Number(v.total), 0);
 
-      let totalEfectivo = 0, totalTarjeta = 0, totalTransferencia = 0, totalDeposito = 0;
+           let totalEfectivo = 0, totalTarjeta = 0, totalTransferencia = 0, totalDeposito = 0;
+      let totalOro = 0, totalPlata = 0, totalOroLaminado = 0;
+
       for (const venta of ventas) {
         for (const pago of venta.pagos) {
           const monto = Number(pago.monto);
@@ -33,11 +35,18 @@ async function generarCorte(req, res) {
           if (pago.metodoPago === 'TRANSFERENCIA') totalTransferencia += monto;
           if (pago.metodoPago === 'DEPOSITO') totalDeposito += monto;
         }
+
+        for (const detalle of venta.detalles) {
+          const subtotal = Number(detalle.subtotal);
+          if (detalle.producto.material === 'ORO') totalOro += subtotal;
+          if (detalle.producto.material === 'PLATA') totalPlata += subtotal;
+          if (detalle.producto.material === 'ORO_LAMINADO') totalOroLaminado += subtotal;
+        }
       }
 
       const totalFinal = totalVentas - totalGastos - totalDevoluciones;
 
-      const corte = await tx.corte.create({
+                const corte = await tx.corte.create({
         data: {
           turnoId: Number(turnoId),
           totalVentas,
@@ -47,6 +56,9 @@ async function generarCorte(req, res) {
           totalTarjeta,
           totalTransferencia,
           totalDeposito,
+          totalOro,
+          totalPlata,
+          totalOroLaminado,
           totalFinal,
           usuarioId: req.usuario.id,
         },
