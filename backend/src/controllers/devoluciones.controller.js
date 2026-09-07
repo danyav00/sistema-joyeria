@@ -1,5 +1,6 @@
 const prisma = require('../utils/prisma');
 const { registrarAuditoria } = require('../utils/auditoria');
+const { obtenerVersiculoAleatorio } = require('../utils/versiculos');
 
 function generarFolio() {
   return `D-${Date.now().toString().slice(-8)}`;
@@ -146,7 +147,7 @@ async function crearDevolucion(req, res) {
       detalle: `Folio ${resultado.folio}, diferencia $${resultado.diferenciaPagada}`,
     });
 
-    res.status(201).json(resultado);
+     res.status(201).json({ ...resultado, versiculo: obtenerVersiculoAleatorio() });
   } catch (error) {
     console.error(error);
     res.status(400).json({ error: error.message || 'Error al registrar la devolucion' });

@@ -1,5 +1,6 @@
 const prisma = require('../utils/prisma');
 const { registrarAuditoria } = require('../utils/auditoria');
+const { obtenerVersiculoAleatorio } = require('../utils/versiculos');
 const ExcelJS = require('exceljs');
 
 function generarFolio() {
@@ -79,7 +80,7 @@ async function crearApartado(req, res) {
       detalle: `Folio ${resultado.folio}, cliente ${resultado.clienteNombre}`,
     });
 
-    res.status(201).json(resultado);
+       res.status(201).json({ ...resultado, versiculo: obtenerVersiculoAleatorio() });
   } catch (error) {
     console.error(error);
     res.status(400).json({ error: error.message || 'Error al crear el apartado' });
@@ -125,7 +126,7 @@ async function abonarApartado(req, res) {
       return apartadoActualizado;
     });
 
-    res.json(resultado);
+     res.json({ ...resultado, versiculo: obtenerVersiculoAleatorio() });
   } catch (error) {
     console.error(error);
     res.status(400).json({ error: error.message || 'Error al registrar el abono' });

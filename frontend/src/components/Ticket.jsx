@@ -1,3 +1,10 @@
+function etiquetaMaterial(material) {
+  if (material === 'PLATA') return 'Plata';
+  if (material === 'ORO') return 'Oro';
+  if (material === 'ORO_LAMINADO') return 'Oro Laminado';
+  return material || '';
+}
+
 export default function Ticket({ venta, versiculo, tipoTicket }) {
   const fecha = new Date(venta.fecha);
 
@@ -24,8 +31,9 @@ export default function Ticket({ venta, versiculo, tipoTicket }) {
     >
       <div style={{ textAlign: 'center', marginBottom: '8px' }}>
         <p style={{ fontSize: '14px', fontWeight: 'bold', margin: 0 }}>NIXCA JOYERÍA</p>
-        <p style={{ fontSize: '9px', margin: 0 }}>Plaza Galerías Las Torres, Isla 7</p>
-        <p style={{ fontSize: '9px', margin: '0 0 4px 0' }}>Tel: 4778063756</p>
+        <p style={{ fontSize: '9px', margin: 0 }}>Celular/WhatsApp: 477 523 7223</p>
+        <p style={{ fontSize: '9px', margin: 0 }}>IG: joyerias.nixca</p>
+        <p style={{ fontSize: '9px', margin: '0 0 4px 0' }}>FB: joyerías nixca</p>
         {tipoTicket && (
           <p style={{ fontSize: '10px', fontWeight: 'bold', margin: '4px 0', borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '2px 0' }}>
             {etiquetasTipo[tipoTicket] || tipoTicket}
@@ -39,7 +47,7 @@ export default function Ticket({ venta, versiculo, tipoTicket }) {
         )}
       </div>
 
-       {venta.detalles && venta.detalles.length > 0 && (
+      {venta.detalles && venta.detalles.length > 0 && (
         <div style={{ borderTop: '1px dashed #000', borderBottom: '1px dashed #000', padding: '6px 0', margin: '6px 0' }}>
           <p style={{ margin: '0 0 4px 0', fontSize: '9px', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between' }}>
             <span>Cant. SKU</span>
@@ -48,14 +56,19 @@ export default function Ticket({ venta, versiculo, tipoTicket }) {
           {venta.detalles.map((d) => {
             const tieneDescuento = d.precioConDescuento && Number(d.precioConDescuento) !== Number(d.precioUnitario);
             return (
-              <p key={d.id} style={{ margin: '0 0 3px 0', fontSize: '9px', display: 'flex', justifyContent: 'space-between' }}>
-                <span>{d.cantidad} {d.producto?.sku} — ${Number(d.precioUnitario).toFixed(2)}</span>
-                {tieneDescuento ? (
-                  <span>${Number(d.precioConDescuento).toFixed(2)}</span>
-                ) : (
-                  <span>${Number(d.subtotal).toFixed(2)}</span>
+              <div key={d.id} style={{ marginBottom: '3px' }}>
+                <p style={{ margin: 0, fontSize: '9px', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>{d.cantidad} {d.producto?.sku} — ${Number(d.precioUnitario).toFixed(2)}</span>
+                  {tieneDescuento ? (
+                    <span>${Number(d.precioConDescuento).toFixed(2)}</span>
+                  ) : (
+                    <span>${Number(d.subtotal).toFixed(2)}</span>
+                  )}
+                </p>
+                {d.producto?.material && (
+                  <p style={{ margin: 0, fontSize: '8px', color: '#444' }}>Material: {etiquetaMaterial(d.producto.material)}</p>
                 )}
-              </p>
+              </div>
             );
           })}
         </div>
@@ -88,16 +101,17 @@ export default function Ticket({ venta, versiculo, tipoTicket }) {
       )}
 
       <div style={{ textAlign: 'center', borderTop: '1px dashed #000', paddingTop: '8px' }}>
-        {versiculo && <p style={{ fontStyle: 'italic', fontSize: '10px' }}>"{versiculo}"</p>}
-        <p style={{ marginTop: '10px', fontSize: '9px' }}>¡Gracias por su compra!</p>
-
-        <div style={{ marginTop: '8px', fontSize: '8px', textAlign: 'left', borderTop: '1px dashed #000', paddingTop: '6px' }}>
+        <div style={{ fontSize: '8px', textAlign: 'left', marginBottom: '8px' }}>
           <p style={{ margin: '2px 0' }}>• Sin ticket no hay cambios ni garantía.</p>
           <p style={{ margin: '2px 0' }}>• La garantía es únicamente de 3 meses por deschapeado.</p>
           <p style={{ margin: '2px 0' }}>• No hay garantía por roturas.</p>
           <p style={{ margin: '2px 0' }}>• No hay garantía en anillos.</p>
           <p style={{ margin: '2px 0' }}>• Cambios por modelo o talla: 5 días, trayendo la pieza con su etiqueta.</p>
         </div>
+
+        <p style={{ fontSize: '9px' }}>¡Gracias por su compra!</p>
+
+        {versiculo && <p style={{ fontStyle: 'italic', fontSize: '10px', marginTop: '8px' }}>"{versiculo}"</p>}
       </div>
     </div>
   );

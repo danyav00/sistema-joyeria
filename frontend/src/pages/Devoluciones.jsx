@@ -235,7 +235,7 @@ export default function Devoluciones() {
                 Cerrar
               </button>
             </div>
-            <TicketDevolucion devolucion={resultado} />
+                        <TicketDevolucion devolucion={resultado} versiculo={resultado.versiculo} atendio={resultado.usuario?.nombre} />
           </div>
         </div>
       )}

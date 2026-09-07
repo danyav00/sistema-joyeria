@@ -1,5 +1,6 @@
 const prisma = require('../utils/prisma');
 const { registrarAuditoria } = require('../utils/auditoria');
+const { obtenerVersiculoAleatorio } = require('../utils/versiculos');
 
 const PORCENTAJE_MINIMO_VENTA = 0.5;
 const DIAS_LIMITE = 45;
@@ -93,8 +94,7 @@ async function abrirCredito(req, res) {
 
     const mayoristaCompleto = await prisma.mayorista.findUnique({ where: { id: resultado.mayoristaId } });
 
-    res.status(201).json({ ...resultado, mayorista: mayoristaCompleto });
-  } catch (error) {
+    res.status(201).json({ ...resultado, mayorista: mayoristaCompleto, versiculo: obtenerVersiculoAleatorio(), usuario: { nombre: req.usuario.nombre } }); } catch (error) {
     console.error(error);
     res.status(400).json({ error: error.message || 'Error al abrir el credito' });
   }
@@ -272,12 +272,12 @@ async function liquidarCredito(req, res) {
       detalle: `Folio ${resultado.folio}, vendido $${resultado.totalVendido}`,
     });
 
-    const creditoCompleto = await prisma.creditoMayorista.findUnique({
+        const creditoCompleto = await prisma.creditoMayorista.findUnique({
       where: { id: resultado.id },
       include: { mayorista: true, productos: { include: { producto: true } } },
     });
 
-    res.json(creditoCompleto);
+    res.json({ ...creditoCompleto, versiculo: obtenerVersiculoAleatorio(), usuario: { nombre: req.usuario.nombre } });
   } catch (error) {
     console.error(error);
     res.status(400).json({ error: error.message || 'Error al liquidar el credito' });

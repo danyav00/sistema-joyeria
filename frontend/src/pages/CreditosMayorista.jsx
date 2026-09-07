@@ -97,8 +97,8 @@ export default function CreditosMayorista() {
         productos: productosArray,
       });
       setForm({ mayoristaId: '', mayoristaTexto: '', productosSeleccionados: {} });
-      setMostrarForm(false);
-      setTicketCredito({ credito: res.data, tipo: 'ABIERTO' });
+      setMostrarForm(false);      setTicketCredito({ credito: res.data, tipo: 'ABIERTO', versiculo: res.data.versiculo, atendio: res.data.usuario?.nombre });
+
       cargarDatos();
     } catch (err) {
       setMensaje(err.response?.data?.error || 'Error al abrir el credito');
@@ -145,7 +145,7 @@ export default function CreditosMayorista() {
         pagos: [{ metodoPago: metodoPagoLiquidacion, monto: totalAPagar }],
       });
 
-      setTicketCredito({ credito: res.data, tipo: 'LIQUIDADO' });
+         setTicketCredito({ credito: res.data, tipo: 'LIQUIDADO', versiculo: res.data.versiculo, atendio: res.data.usuario?.nombre });
       setLiquidando(null);
       cargarDatos();
     } catch (err) {
@@ -416,7 +416,7 @@ export default function CreditosMayorista() {
                 Cerrar
               </button>
             </div>
-            <TicketCredito credito={ticketCredito.credito} tipo={ticketCredito.tipo} />
+            <TicketCredito credito={ticketCredito.credito} tipo={ticketCredito.tipo} versiculo={ticketCredito.versiculo} atendio={ticketCredito.atendio} />
           </div>
         </div>
       )}

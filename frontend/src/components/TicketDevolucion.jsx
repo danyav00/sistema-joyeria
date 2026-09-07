@@ -1,5 +1,6 @@
-export default function TicketDevolucion({ devolucion }) {
+export default function TicketDevolucion({ devolucion, atendio, versiculo }) {
   const fecha = new Date(devolucion.fecha);
+  const esCambio = devolucion.tipo === 'CAMBIO';
 
   return (
     <div
@@ -16,46 +17,64 @@ export default function TicketDevolucion({ devolucion }) {
     >
       <div style={{ textAlign: 'center', marginBottom: '8px' }}>
         <p style={{ fontSize: '14px', fontWeight: 'bold', margin: 0 }}>NIXCA JOYERÍA</p>
-        <p style={{ fontSize: '9px', margin: 0 }}>Plaza Galerías Las Torres, Isla 7</p>
-        <p style={{ fontSize: '9px', margin: '0 0 4px 0' }}>Tel: 4778063756</p>
+        <p style={{ fontSize: '9px', margin: 0 }}>Celular/WhatsApp: 477 523 7223</p>
+        <p style={{ fontSize: '9px', margin: 0 }}>IG: joyerias.nixca</p>
+        <p style={{ fontSize: '9px', margin: '0 0 4px 0' }}>FB: joyerías nixca</p>
         <p style={{ fontSize: '10px', fontWeight: 'bold', margin: '4px 0', borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '2px 0' }}>
-          TICKET DE CAMBIO / DEVOLUCIÓN
+          {esCambio ? 'TICKET DE CAMBIO' : 'TICKET DE DEVOLUCIÓN (GARANTÍA)'}
         </p>
         <p style={{ margin: 0 }}>Folio: {devolucion.folio}</p>
         <p style={{ margin: 0 }}>{fecha.toLocaleDateString('es-MX')} {fecha.toLocaleTimeString('es-MX')}</p>
+        <p style={{ margin: 0 }}>Atendió: {atendio || devolucion.usuario?.nombre || '—'}</p>
         <p style={{ margin: 0 }}>Venta original: {devolucion.ventaOriginal?.folio}</p>
       </div>
 
       <div style={{ borderTop: '1px dashed #000', borderBottom: '1px dashed #000', padding: '6px 0', margin: '6px 0' }}>
-        <p style={{ margin: '0 0 4px 0', fontSize: '9px', fontWeight: 'bold' }}>Producto devuelto:</p>
-        <p style={{ margin: '0 0 3px 0', fontSize: '9px', display: 'flex', justifyContent: 'space-between' }}>
-          <span>{devolucion.productoDevuelto?.sku} — {devolucion.productoDevuelto?.nombre}</span>
+        <p style={{ margin: '0 0 4px 0', fontSize: '9px', fontWeight: 'bold' }}>
+          Producto {esCambio ? 'devuelto' : 'en garantía'}:
         </p>
+        <p style={{ margin: '0 0 3px 0', fontSize: '9px' }}>
+          {devolucion.productoDevuelto?.sku} — {devolucion.productoDevuelto?.nombre}
+        </p>
+        {!esCambio && devolucion.danado && (
+          <p style={{ margin: '0 0 3px 0', fontSize: '8px', color: '#a00' }}>Producto dañado — dado de baja del inventario</p>
+        )}
 
-        <p style={{ margin: '8px 0 4px 0', fontSize: '9px', fontWeight: 'bold' }}>Producto nuevo entregado:</p>
-        <p style={{ margin: '0 0 3px 0', fontSize: '9px', display: 'flex', justifyContent: 'space-between' }}>
-          <span>{devolucion.productoNuevo?.sku} — {devolucion.productoNuevo?.nombre}</span>
-        </p>
+        {esCambio && (
+          <>
+            <p style={{ margin: '8px 0 4px 0', fontSize: '9px', fontWeight: 'bold' }}>Producto nuevo entregado:</p>
+            <p style={{ margin: '0 0 3px 0', fontSize: '9px' }}>
+              {devolucion.productoNuevo?.sku} — {devolucion.productoNuevo?.nombre}
+            </p>
+          </>
+        )}
       </div>
 
       <div style={{ marginBottom: '10px' }}>
-        {Number(devolucion.diferenciaPagada) > 0 ? (
-          <p style={{ margin: 0, fontWeight: 'bold', display: 'flex', justifyContent: 'space-between' }}>
-            <span>DIFERENCIA PAGADA:</span><span>${Number(devolucion.diferenciaPagada).toFixed(2)}</span>
-          </p>
-        ) : (
+        {esCambio && Number(devolucion.diferenciaPagada) > 0 ? (
+          <>
+            <p style={{ margin: 0, fontWeight: 'bold', display: 'flex', justifyContent: 'space-between' }}>
+              <span>DIFERENCIA PAGADA:</span><span>${Number(devolucion.diferenciaPagada).toFixed(2)}</span>
+            </p>
+            <p style={{ margin: '2px 0 0 0', fontSize: '9px' }}>Método de pago: {devolucion.metodoPago}</p>
+          </>
+        ) : esCambio ? (
           <p style={{ margin: 0, fontSize: '9px' }}>Cambio sin costo adicional (igual o menor precio).</p>
+        ) : (
+          <p style={{ margin: 0, fontSize: '9px' }}>Sin costo. No entra ni sale dinero por esta garantía.</p>
         )}
       </div>
 
       <div style={{ textAlign: 'center', borderTop: '1px dashed #000', paddingTop: '8px' }}>
-        <p style={{ fontSize: '9px' }}>¡Gracias por su compra!</p>
-        <div style={{ marginTop: '8px', fontSize: '8px', textAlign: 'left', borderTop: '1px dashed #000', paddingTop: '6px' }}>
-          <p style={{ margin: '2px 0' }}>• Sin ticket no hay cambios ni garantía.</p>
-          <p style={{ margin: '2px 0' }}>• La garantía es únicamente de 3 meses por deschapeado.</p>
-          <p style={{ margin: '2px 0' }}>• No hay garantía por roturas.</p>
-          <p style={{ margin: '2px 0' }}>• No hay garantía en anillos.</p>
+        <div style={{ fontSize: '8px', textAlign: 'left', marginBottom: '8px' }}>
+          <p style={{ margin: '2px 0' }}>
+            • En caso de cambio, no se puede hacer un segundo cambio; en caso de garantía, conserve su ticket para su garantía por tres meses.
+          </p>
         </div>
+
+              <p style={{ fontSize: '9px' }}>¡Gracias por su compra!</p>
+
+        {versiculo && <p style={{ fontStyle: 'italic', fontSize: '10px', marginTop: '8px' }}>"{versiculo}"</p>}
       </div>
     </div>
   );

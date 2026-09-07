@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 import api from '../services/api';
 import Layout from '../components/Layout';
 import TicketApartado from '../components/TicketApartado';
+import { useAuth } from '../context/AuthContext';
 import Ticket from '../components/Ticket';
 
 export default function Apartados() {
+  const { usuario } = useAuth();
   const [apartados, setApartados] = useState([]);
   const [productos, setProductos] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -49,9 +51,8 @@ export default function Apartados() {
       const res = await api.post('/apartados', form);
       setForm({ productoId: '', clienteNombre: '', clienteTelefono: '', anticipo: '', cantidad: 1 });
       setMostrarForm(false);
-      const producto = productos.find((p) => p.id === Number(form.productoId));
-      setTicketApartado({ apartado: { ...res.data, producto }, tipo: 'CREADO' });
-      cargarDatos();
+          const producto = productos.find((p) => p.id === Number(form.productoId));
+      setTicketApartado({ apartado: { ...res.data, producto }, tipo: 'CREADO', versiculo: res.data.versiculo, atendio: usuario?.nombre }); cargarDatos();
     } catch (err) {
       setMensaje(err.response?.data?.error || 'Error al crear el apartado');
     }
@@ -68,8 +69,10 @@ export default function Apartados() {
         apartado: { ...res.data, producto: apartadoOriginal?.producto },
         tipo: 'ABONO',
         montoAbono: Number(monto),
-      });
-      cargarDatos();
+        versiculo: res.data.versiculo,
+        atendio: usuario?.nombre,
+      });   
+         cargarDatos();
     } catch (err) {
       alert(err.response?.data?.error || 'Error al registrar el abono');
     }
@@ -269,10 +272,12 @@ export default function Apartados() {
                 Cerrar
               </button>
             </div>
-            <TicketApartado
+                        <TicketApartado
               apartado={ticketApartado.apartado}
               tipo={ticketApartado.tipo}
               montoAbono={ticketApartado.montoAbono}
+              versiculo={ticketApartado.versiculo}
+              atendio={ticketApartado.atendio}
             />
           </div>
         </div>
