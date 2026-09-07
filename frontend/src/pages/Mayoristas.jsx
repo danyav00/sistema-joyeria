@@ -6,9 +6,11 @@ export default function Mayoristas() {
   const [mayoristas, setMayoristas] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [mostrarForm, setMostrarForm] = useState(false);
-  const [editando, setEditando] = useState(null);
   const [form, setForm] = useState({ numeroCliente: '', nombreCompleto: '', telefono: '', tipoBeneficio: 'NORMAL' });
-  
+
+  const [editando, setEditando] = useState(null);
+  const [formEdicion, setFormEdicion] = useState({ nombreCompleto: '', telefono: '' });
+
   function cargarDatos() {
     setCargando(true);
     api.get('/mayoristas').then((res) => setMayoristas(res.data)).finally(() => setCargando(false));
@@ -40,16 +42,6 @@ export default function Mayoristas() {
       alert(err.response?.data?.error || 'Error al revisar mayoristas');
     }
   }
-  
-  async function reactivarManual(id, nombre) {
-    if (!confirm(`¿Reactivar manualmente a "${nombre}"? Confirma que cumple el minimo de $1,500 en compra.`)) return;
-    try {
-      await api.put(`/mayoristas/${id}/reactivar`);
-      cargarDatos();
-    } catch (err) {
-      alert(err.response?.data?.error || 'Error al reactivar el mayorista');
-    }
-  }
 
   function iniciarEdicion(m) {
     setEditando(m.id);
@@ -63,6 +55,16 @@ export default function Mayoristas() {
       cargarDatos();
     } catch (err) {
       alert(err.response?.data?.error || 'Error al editar el mayorista');
+    }
+  }
+
+  async function reactivarManual(id, nombre) {
+    if (!confirm(`¿Reactivar manualmente a "${nombre}"? Confirma que cumple el minimo de $1,500 en compra.`)) return;
+    try {
+      await api.put(`/mayoristas/${id}/reactivar`);
+      cargarDatos();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Error al reactivar el mayorista');
     }
   }
 
@@ -118,8 +120,8 @@ export default function Mayoristas() {
                 <th className="pb-3">No. Cliente</th>
                 <th className="pb-3">Nombre</th>
                 <th className="pb-3">Teléfono</th>
-                <th className="pb-3">Acumulado</th>
                 <th className="pb-3">Tipo</th>
+                <th className="pb-3">Acumulado</th>
                 <th className="pb-3">Estado</th>
                 <th className="pb-3">Acción</th>
               </tr>
@@ -151,8 +153,8 @@ export default function Mayoristas() {
                       <td className="py-3 text-[#8a8478]">{m.telefono}</td>
                     </>
                   )}
-                  <td className="py-3 text-[#c9a227]">${Number(m.totalAcumuladoPeriodo).toFixed(2)}</td>
                   <td className="py-3 text-[#8a8478] text-xs">{m.tipoBeneficio}</td>
+                  <td className="py-3 text-[#c9a227]">${Number(m.totalAcumuladoPeriodo).toFixed(2)}</td>
                   <td className={`py-3 ${m.estado === 'ACTIVO' ? 'text-green-400' : 'text-amber-400'}`}>{m.estado}</td>
                   <td className="py-3">
                     {editando === m.id ? (
