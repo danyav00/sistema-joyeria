@@ -35,7 +35,8 @@ async function abrirCredito(req, res) {
         if (producto.existencia < 1) throw new Error(`Producto ${producto.nombre} sin existencia disponible`);
         if (producto.material !== 'ORO_LAMINADO') throw new Error(`Producto ${producto.nombre} no es Oro Laminado, no se acepta en creditos`);
 
-        const precio = Number(producto.codigoPrecio.precio);
+        const precioBase = Number(producto.codigoPrecio.precio);
+        const precio = Math.round(precioBase * 0.5 * 100) / 100;
         totalCredito += precio;
 
         productosData.push({ productoId: producto.id, precioAlMomento: precio });

@@ -3,6 +3,14 @@ import api from '../services/api';
 import Layout from '../components/Layout';
 import TicketCredito from '../components/TicketCredito';
 
+function nombreConMaterial(producto) {
+  if (producto.material === 'PLATA') return `${producto.nombre} Plata`;
+  if (producto.material === 'ORO') {
+    return producto.tipo?.toLowerCase().includes('broquel') ? `${producto.nombre} 10K` : `${producto.nombre} Oro`;
+  }
+  return producto.nombre;
+}
+
 export default function CreditosMayorista() {
   const [creditos, setCreditos] = useState([]);
   const [mayoristas, setMayoristas] = useState([]);
@@ -21,7 +29,7 @@ export default function CreditosMayorista() {
   const [mensajeLiquidacion, setMensajeLiquidacion] = useState('');
 
   const [ticketCredito, setTicketCredito] = useState(null);
-    const [expandido, setExpandido] = useState({});
+  const [expandido, setExpandido] = useState({});
 
   function toggleExpandido(creditoId) {
     setExpandido((prev) => ({ ...prev, [creditoId]: !prev[creditoId] }));
@@ -49,7 +57,7 @@ export default function CreditosMayorista() {
   function toggleProducto(productoId) {
     setForm((prev) => {
       const nuevo = { ...prev.productosSeleccionados };
-      if (nuevo[productoId]) {
+      if (nuevo[productoId] !== undefined) {
         delete nuevo[productoId];
       } else {
         nuevo[productoId] = 1;
@@ -147,7 +155,9 @@ export default function CreditosMayorista() {
 
   const totalSeleccionado = Object.entries(form.productosSeleccionados).reduce((suma, [productoId, cantidad]) => {
     const producto = productos.find((p) => p.id === Number(productoId));
-    return producto ? suma + Number(producto.codigoPrecio.precio) * cantidad : suma;
+    if (!producto) return suma;
+    const precioConDescuento = Math.round(Number(producto.codigoPrecio.precio) * 0.5 * 100) / 100;
+    return suma + precioConDescuento * (Number(cantidad) || 0);
   }, 0);
 
   const productosFiltrados = productos.filter((p) => {
@@ -168,7 +178,7 @@ export default function CreditosMayorista() {
       c.mayorista?.numeroCliente.toLowerCase().includes(texto)
     );
   });
-
+  
   return (
     <Layout>
       <div className="p-8" style={{ fontFamily: "'Inter', sans-serif" }}>
@@ -185,78 +195,107 @@ export default function CreditosMayorista() {
         </div>
 
         {mostrarForm && (
-          <form onSubmit={abrirCredito} className="border border-[#2a251c] p-5 mb-6">
-            <input
-              list="lista-mayoristas"
-              placeholder="Escribe para buscar un mayorista..."
-              value={form.mayoristaTexto || ''}
-              onChange={(e) => {
-                const texto = e.target.value;
-                const encontrado = mayoristas.find((m) => `${m.numeroCliente} — ${m.nombreCompleto}` === texto);
-                setForm({ ...form, mayoristaTexto: texto, mayoristaId: encontrado ? encontrado.id : '' });
-              }}
-              className="bg-transparent border border-[#3a352c] focus:border-[#c9a227] text-[#f5f1e8] px-3 py-2 text-sm outline-none w-full mb-4"
-              required
-            />
-            <datalist id="lista-mayoristas">
-              {mayoristas.map((m) => (
-                <option key={m.id} value={`${m.numeroCliente} — ${m.nombreCompleto}`} />
-              ))}
-            </datalist>
+          <form onSubmit={abrirCredito} className="border border-[#2a251c] p-5 mb-6 grid grid-cols-3 gap-4">
+            <div className="col-span-2">
+              <input
+                list="lista-mayoristas"
+                placeholder="Escribe para buscar un mayorista..."
+                value={form.mayoristaTexto || ''}
+                onChange={(e) => {
+                  const texto = e.target.value;
+                  const encontrado = mayoristas.find((m) => `${m.numeroCliente} — ${m.nombreCompleto}` === texto);
+                  setForm({ ...form, mayoristaTexto: texto, mayoristaId: encontrado ? encontrado.id : '' });
+                }}
+                className="bg-transparent border border-[#3a352c] focus:border-[#c9a227] text-[#f5f1e8] px-3 py-2 text-sm outline-none w-full mb-4"
+                required
+              />
+              <datalist id="lista-mayoristas">
+                {mayoristas.map((m) => (
+                  <option key={m.id} value={`${m.numeroCliente} — ${m.nombreCompleto}`} />
+                ))}
+              </datalist>
 
-            <p className="text-xs text-[#8a8478] uppercase mb-2">Selecciona los productos (mínimo $2,000 en total, solo Oro Laminado)</p>
-            <input
-              type="text"
-              placeholder="Buscar por SKU o nombre..."
-              value={busquedaProducto}
-              onChange={(e) => setBusquedaProducto(e.target.value)}
-              className="w-full bg-transparent border border-[#3a352c] focus:border-[#c9a227] text-[#f5f1e8] px-3 py-2 text-sm outline-none mb-2"
-            />
-            <div className="grid grid-cols-2 gap-2 mb-4 max-h-64 overflow-auto">
-              {productosFiltrados.map((p) => {
-                const seleccionado = form.productosSeleccionados[p.id];
-                return (
-                  <div
-                    key={p.id}
-                    className={`border p-3 text-sm flex items-center gap-2 ${
-                      seleccionado !== undefined ? 'border-[#c9a227]' : 'border-[#2a251c]'
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={seleccionado !== undefined}
-                      onChange={() => toggleProducto(p.id)}
-                    />
-                    <div className="flex-1">
-                      <p className="text-[#f5f1e8]">{p.nombre} — {p.sku}</p>
-                      <p className="text-[#8a8478] text-xs">
-                        {p.material} — ${Number(p.codigoPrecio.precio).toFixed(2)} — Existencia: {p.existencia}
-                      </p>
-                    </div>
-                    {seleccionado !== undefined && (
-                      <input
-                        type="number"
-                        min="1"
-                        max={p.existencia}
-                        value={seleccionado}
-                        onChange={(e) => actualizarCantidadProducto(p.id, e.target.value)}
-                        onBlur={() => validarCantidadProducto(p.id, p.existencia)}
-                        onFocus={(e) => e.target.select()}
-                        className="bg-transparent border border-[#3a352c] text-[#f5f1e8] text-xs px-2 py-1 w-14"
-                      />
-                    )}
-                  </div>
-                );
-              })}
+              <p className="text-xs text-[#8a8478] uppercase mb-2">Buscar productos (solo Oro Laminado, mínimo $2,000 con 50% descuento)</p>
+              <input
+                type="text"
+                placeholder="Buscar por SKU o nombre..."
+                value={busquedaProducto}
+                onChange={(e) => setBusquedaProducto(e.target.value)}
+                className="w-full bg-transparent border border-[#3a352c] focus:border-[#c9a227] text-[#f5f1e8] px-3 py-2 text-sm outline-none mb-2"
+              />
+              <div className="space-y-2 max-h-80 overflow-auto">
+                {productosFiltrados.map((p) => {
+                  const seleccionado = form.productosSeleccionados[p.id];
+                  const precioConDescuento = Math.round(Number(p.codigoPrecio.precio) * 0.5 * 100) / 100;
+                  return (
+                    <button
+                      type="button"
+                      key={p.id}
+                      onClick={() => toggleProducto(p.id)}
+                      className={`w-full text-left border p-3 text-sm transition-colors ${
+                        seleccionado !== undefined ? 'border-[#c9a227]' : 'border-[#2a251c] hover:border-[#c9a227]'
+                      }`}
+                    >
+                      <p className="text-[#f5f1e8]">{nombreConMaterial(p)}</p>
+                      <p className="text-[#8a8478] text-xs">{p.sku} • Existencia: {p.existencia}</p>
+                      <p className="text-[#c9a227] mt-1">${precioConDescuento.toFixed(2)} <span className="text-[#8a8478] text-xs line-through ml-1">${Number(p.codigoPrecio.precio).toFixed(2)}</span></p>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
-            <p className="text-[#f5f1e8] mb-3">Total seleccionado: <span className="text-[#c9a227]">${totalSeleccionado.toFixed(2)}</span></p>
+            <div className="border border-[#2a251c] p-4 h-fit">
+              <h3 className="text-sm text-[#f5f1e8] uppercase tracking-wide mb-3">Carrito del crédito</h3>
+              {Object.keys(form.productosSeleccionados).length === 0 ? (
+                <p className="text-[#8a8478] text-sm">Sin productos</p>
+              ) : (
+                <div className="space-y-3 mb-4">
+                  {Object.entries(form.productosSeleccionados).map(([productoId, cantidad]) => {
+                    const producto = productos.find((p) => p.id === Number(productoId));
+                    if (!producto) return null;
+                    const precioConDescuento = Math.round(Number(producto.codigoPrecio.precio) * 0.5 * 100) / 100;
+                    return (
+                      <div key={productoId} className="text-sm">
+                        <p className="text-[#f5f1e8]">{nombreConMaterial(producto)}</p>
+                        <p className="text-[#8a8478] text-xs">{producto.sku}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <input
+                            type="number"
+                            min="1"
+                            max={producto.existencia}
+                            value={cantidad}
+                            onChange={(e) => actualizarCantidadProducto(productoId, e.target.value)}
+                            onBlur={() => validarCantidadProducto(productoId, producto.existencia)}
+                            onFocus={(e) => e.target.select()}
+                            className="bg-transparent border border-[#3a352c] text-[#f5f1e8] text-xs px-2 py-1 w-14"
+                          />
+                          <p className="text-[#8a8478] text-xs">
+                            x ${precioConDescuento.toFixed(2)} = ${(precioConDescuento * (Number(cantidad) || 0)).toFixed(2)}
+                          </p>
+                          <button type="button" onClick={() => toggleProducto(Number(productoId))} className="text-red-400 text-xs ml-auto">
+                            Quitar
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
-            {mensaje && <p className="text-red-400 text-xs mb-3">{mensaje}</p>}
+              <div className="border-t border-[#2a251c] pt-3">
+                <p className="text-[#f5f1e8] flex justify-between mb-3">
+                  <span>Total</span>
+                  <span className="text-[#c9a227]">${totalSeleccionado.toFixed(2)}</span>
+                </p>
 
-            <button type="submit" className="bg-[#c9a227] hover:bg-[#b8931f] text-[#1a1815] font-medium py-2 text-sm w-full">
-              Abrir crédito
-            </button>
+                {mensaje && <p className="text-red-400 text-xs mb-3">{mensaje}</p>}
+
+                <button type="submit" className="bg-[#c9a227] hover:bg-[#b8931f] text-[#1a1815] font-medium py-2 text-sm w-full">
+                  Abrir crédito
+                </button>
+              </div>
+            </div>
           </form>
         )}
 
@@ -306,7 +345,7 @@ export default function CreditosMayorista() {
                   liquidando === c.id ? (
                     <div className="border-t border-[#2a251c] pt-3 mt-3">
                       <p className="text-xs text-[#8a8478] uppercase mb-2">
-                        Marca el estado de cada pieza (Vendida = el mayorista la vendió; Devuelta = solo Oro Laminado; sin marcar = se la queda y paga)
+                        Marca el estado de cada pieza (Vendida / Devuelta / sin marcar = se la queda y paga)
                       </p>
                       <div className="space-y-2 mb-3">
                         {c.productos.map((p) => (
