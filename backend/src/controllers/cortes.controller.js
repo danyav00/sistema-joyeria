@@ -15,6 +15,21 @@ async function generarCorte(req, res) {
         where: { turnoId: Number(turnoId) },
         include: { pagos: true, detalles: { include: { producto: true } } },
       });
+      
+      const apartadosLiquidados = await tx.apartado.findMany({
+        where: {
+          estado: { in: ['LIQUIDADO', 'ENTREGADO'] },
+          abonos: {
+            some: {
+              usuarioId: req.usuario.id,
+              fecha: {
+                gte: new Date(new Date().setHours(0, 0, 0, 0)),
+              },
+            },
+          },
+        },
+        include: { producto: true, abonos: { where: { fecha: { gte: new Date(new Date().setHours(0, 0, 0, 0)) } } } },
+      });
 
       const gastos = await tx.gasto.findMany({ where: { turnoId: Number(turnoId) } });
 
@@ -69,10 +84,10 @@ async function generarCorte(req, res) {
         data: { estado: 'CERRADO', fechaCierre: new Date(), horaCierre: new Date().toTimeString().slice(0, 5) },
       });
 
-      return corte;
+      return { corte, apartadosLiquidados };
     });
 
-    res.status(201).json(resultado);
+    res.status(201).json({ ...resultado.corte, apartadosLiquidados: resultado.apartadosLiquidados });
   } catch (error) {
     console.error(error);
     res.status(400).json({ error: error.message || 'Error al generar el corte' });

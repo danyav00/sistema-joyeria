@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import api from '../services/api';
 import Layout from '../components/Layout';
 import TicketApartado from '../components/TicketApartado';
-import { useAuth } from '../context/AuthContext';
 import Ticket from '../components/Ticket';
+import { useAuth } from '../context/AuthContext';
 
 export default function Apartados() {
   const { usuario } = useAuth();
@@ -14,7 +14,7 @@ export default function Apartados() {
   const [mensaje, setMensaje] = useState('');
   const [montosAbono, setMontosAbono] = useState({});
   const [ticketApartado, setTicketApartado] = useState(null);
-    const [ticketVentaLiquidacion, setTicketVentaLiquidacion] = useState(null);
+  const [ticketVentaLiquidacion, setTicketVentaLiquidacion] = useState(null);
   const [busquedaProducto, setBusquedaProducto] = useState('');
 
   const [form, setForm] = useState({ productoId: '', clienteNombre: '', clienteTelefono: '', anticipo: '', cantidad: 1 });
@@ -51,37 +51,19 @@ export default function Apartados() {
       const res = await api.post('/apartados', form);
       setForm({ productoId: '', clienteNombre: '', clienteTelefono: '', anticipo: '', cantidad: 1 });
       setMostrarForm(false);
-          const producto = productos.find((p) => p.id === Number(form.productoId));
-      setTicketApartado({ apartado: { ...res.data, producto }, tipo: 'CREADO', versiculo: res.data.versiculo, atendio: usuario?.nombre }); cargarDatos();
+      const producto = productos.find((p) => p.id === Number(form.productoId));
+      setTicketApartado({ apartado: { ...res.data, producto }, tipo: 'CREADO', versiculo: res.data.versiculo, atendio: usuario?.nombre });
+      cargarDatos();
     } catch (err) {
       setMensaje(err.response?.data?.error || 'Error al crear el apartado');
     }
   }
 
-  async function registrarAbono(id) {
-    const monto = montosAbono[id];
-    if (!monto) return;
-    try {
-      const res = await api.post(`/apartados/${id}/abono`, { monto: Number(monto), metodoPago: 'EFECTIVO' });
-      setMontosAbono({ ...montosAbono, [id]: '' });
-      const apartadoOriginal = apartados.find((a) => a.id === id);
-      setTicketApartado({
-        apartado: { ...res.data, producto: apartadoOriginal?.producto },
-        tipo: 'ABONO',
-        montoAbono: Number(monto),
-        versiculo: res.data.versiculo,
-        atendio: usuario?.nombre,
-      });   
-         cargarDatos();
-    } catch (err) {
-      alert(err.response?.data?.error || 'Error al registrar el abono');
-    }
-  }
-    function generarTicketVenta(apartado) {
+  function generarTicketVenta(apartado) {
     const ventaSimulada = {
       folio: apartado.folio,
-      fecha: apartado.fechaApartado,
-      usuario: { nombre: apartado.usuarioNombre || '—' },
+      fecha: apartado.fechaApartado || new Date(),
+      usuario: { nombre: usuario?.nombre || '—' },
       detalles: [{
         id: apartado.id,
         producto: apartado.producto,
@@ -94,7 +76,32 @@ export default function Apartados() {
       total: Number(apartado.precioTotal),
       pagos: [{ id: 1, metodoPago: 'VARIOS (anticipo + abonos)', monto: Number(apartado.precioTotal) }],
     };
-    setTicketVentaLiquidacion({ venta: ventaSimulada });
+    setTicketVentaLiquidacion({ venta: ventaSimulada, versiculo: apartado.versiculo });
+  }
+
+  async function registrarAbono(id) {
+    const monto = montosAbono[id];
+    if (!monto) return;
+    try {
+      const res = await api.post(`/apartados/${id}/abono`, { monto: Number(monto), metodoPago: 'EFECTIVO' });
+      setMontosAbono({ ...montosAbono, [id]: '' });
+      const apartadoOriginal = apartados.find((a) => a.id === id);
+
+      if (res.data.estado === 'LIQUIDADO') {
+        generarTicketVenta({ ...res.data, producto: apartadoOriginal?.producto });
+      } else {
+        setTicketApartado({
+          apartado: { ...res.data, producto: apartadoOriginal?.producto },
+          tipo: 'ABONO',
+          montoAbono: Number(monto),
+          versiculo: res.data.versiculo,
+          atendio: usuario?.nombre,
+        });
+      }
+      cargarDatos();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Error al registrar el abono');
+    }
   }
 
   async function entregar(id) {
@@ -138,16 +145,16 @@ export default function Apartados() {
           </h2>
           <div className="flex gap-3">
             <button
-              onClick={descargarExcel}
-              className="border border-[#c9a227] text-[#c9a227] px-4 py-2 text-sm hover:bg-[#c9a227]/10 transition-colors"
-            >
-              Descargar Excel
-            </button>
-            <button
               onClick={() => setMostrarForm(!mostrarForm)}
               className="bg-[#c9a227] hover:bg-[#b8931f] text-[#1a1815] font-medium px-4 py-2 text-sm transition-colors"
             >
               {mostrarForm ? 'Cancelar' : '+ Nuevo apartado'}
+            </button>
+            <button
+              onClick={descargarExcel}
+              className="border border-[#c9a227] text-[#c9a227] px-4 py-2 text-sm hover:bg-[#c9a227]/10 transition-colors"
+            >
+              Descargar Excel
             </button>
           </div>
         </div>
@@ -217,7 +224,7 @@ export default function Apartados() {
             {apartados.map((a) => (
               <div key={a.id} className="border border-[#2a251c] p-4 flex items-center justify-between">
                 <div>
-                  <p className="text-[#f5f1e8] text-sm">{a.producto.nombre} x{a.cantidad} — {a.clienteNombre}</p>
+                  <p className="text-[#f5f1e8] text-sm">{a.producto.sku} — {a.producto.nombre} x{a.cantidad} — {a.clienteNombre}</p>
                   <p className="text-[#8a8478] text-xs">
                     Tel: {a.clienteTelefono} • Saldo: ${Number(a.saldoPendiente).toFixed(2)} de ${Number(a.precioTotal).toFixed(2)}
                   </p>
@@ -244,15 +251,10 @@ export default function Apartados() {
                     </>
                   )}
 
-                                    {a.estado === 'LIQUIDADO' && (
-                    <>
-                      <button onClick={() => generarTicketVenta(a)} className="text-xs text-[#c9a227] hover:underline">
-                        Liquidar (ticket de venta)
-                      </button>
-                      <button onClick={() => entregar(a.id)} className="text-xs text-green-400 hover:underline">
-                        Marcar como entregado
-                      </button>
-                    </>
+                  {a.estado === 'LIQUIDADO' && (
+                    <button onClick={() => entregar(a.id)} className="text-xs text-green-400 hover:underline">
+                      Marcar como entregado
+                    </button>
                   )}
                 </div>
               </div>
@@ -261,7 +263,7 @@ export default function Apartados() {
         )}
       </div>
 
-            {ticketApartado && (
+      {ticketApartado && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 print:bg-white print:relative">
           <div className="bg-[#1a1815] p-4 max-h-[90vh] overflow-auto print:bg-white print:p-0 print:max-h-none">
             <div className="print:hidden flex justify-between items-center mb-4 gap-4">
@@ -272,7 +274,7 @@ export default function Apartados() {
                 Cerrar
               </button>
             </div>
-                        <TicketApartado
+            <TicketApartado
               apartado={ticketApartado.apartado}
               tipo={ticketApartado.tipo}
               montoAbono={ticketApartado.montoAbono}
@@ -294,7 +296,7 @@ export default function Apartados() {
                 Cerrar
               </button>
             </div>
-            <Ticket venta={ticketVentaLiquidacion.venta} tipoTicket="VENTA" />
+            <Ticket venta={ticketVentaLiquidacion.venta} versiculo={ticketVentaLiquidacion.versiculo} tipoTicket="VENTA" />
           </div>
         </div>
       )}

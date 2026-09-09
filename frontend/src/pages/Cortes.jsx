@@ -8,6 +8,7 @@ export default function Cortes() {
   const [cortes, setCortes] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [mensaje, setMensaje] = useState('');
+    const [apartadosDelCorte, setApartadosDelCorte] = useState(null);
   const { usuario } = useAuth();
 
   function cargarDatos() {
@@ -28,7 +29,10 @@ export default function Cortes() {
     if (!confirm('¿Generar el corte de este turno? El turno se cerrará y no se podrán agregar más ventas ni gastos.')) return;
     setMensaje('');
     try {
-      await api.post(`/cortes/turno/${turno.id}`);
+      const res = await api.post(`/cortes/turno/${turno.id}`);
+      if (res.data.apartadosLiquidados && res.data.apartadosLiquidados.length > 0) {
+        setApartadosDelCorte(res.data.apartadosLiquidados);
+      }
       cargarDatos();
     } catch (err) {
       setMensaje(err.response?.data?.error || 'Error al generar el corte');
@@ -62,6 +66,30 @@ export default function Cortes() {
           </div>
         ) : (
           <p className="text-[#8a8478] mb-6">No tienes un turno abierto actualmente.</p>
+        )}
+
+        {apartadosDelCorte && (
+          <div className="border border-[#2a251c] p-5 mb-6">
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-sm text-[#f5f1e8] uppercase tracking-wide">Apartados liquidados hoy</h3>
+              <button onClick={() => setApartadosDelCorte(null)} className="text-xs text-[#8a8478] hover:text-[#f5f1e8]">
+                Cerrar
+              </button>
+            </div>
+            <div className="space-y-3">
+              {apartadosDelCorte.map((a) => (
+                <div key={a.id} className="border-b border-[#2a251c]/50 pb-2">
+                  <p className="text-[#f5f1e8] text-sm">{a.producto.sku} — {a.producto.nombre} — {a.clienteNombre}</p>
+                  <p className="text-[#8a8478] text-xs">Total: ${Number(a.precioTotal).toFixed(2)}</p>
+                  {a.abonos.map((ab) => (
+                    <p key={ab.id} className="text-[#8a8478] text-xs ml-3">
+                      Abono: ${Number(ab.monto).toFixed(2)} ({ab.metodoPago})
+                    </p>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
         )}
 
         {usuario?.rol === 'ADMINISTRADOR' && (
