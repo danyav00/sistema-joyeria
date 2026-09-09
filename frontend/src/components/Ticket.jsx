@@ -42,7 +42,7 @@ export default function Ticket({ venta, versiculo, tipoTicket }) {
         <p style={{ margin: 0 }}>Folio: {venta.folio}</p>
         <p style={{ margin: 0 }}>{fecha.toLocaleDateString('es-MX')} {fecha.toLocaleTimeString('es-MX')}</p>
         <p style={{ margin: 0 }}>Atendió: {venta.usuario?.nombre}</p>
-        {venta.tipoVenta === 'MAYOREO' && !venta.mayorista && (
+        {venta.tipoVenta === 'LOCATARIO' && (
           <p style={{ margin: 0, fontWeight: 'bold' }}>VENTA DE LOCATARIO</p>
         )}
         {venta.mayorista && (

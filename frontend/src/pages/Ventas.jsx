@@ -195,7 +195,7 @@ export default function Ventas() {
 
       const resVenta = await api.post('/ventas', {
         turnoId: turno.id,
-        tipoVenta: tipoDescuento === 'MAYORISTA' ? 'MAYOREO' : 'MENUDEO',
+        tipoVenta: tipoDescuento === 'MAYORISTA' ? 'MAYOREO' : tipoDescuento === 'LOCATARIO' ? 'LOCATARIO' : 'MENUDEO',
         tipoDescuento,
         mayoristaId: mayoristaSeleccionado ? mayoristaSeleccionado.id : undefined,
         productos: carrito.map((item) => ({ productoId: item.productoId, cantidad: Number(item.cantidad) })),

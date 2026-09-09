@@ -141,6 +141,7 @@ model MovimientoInventario {
 enum TipoVenta {
   MENUDEO
   MAYOREO
+  LOCATARIO
 }
 
 enum EstadoVenta {
