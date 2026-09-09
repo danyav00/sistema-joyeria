@@ -118,8 +118,40 @@ export default function CreditosMayorista() {
     setProductosNuevoCredito({});
   }
 
-  function marcarEstadoPieza(lineaId, estado) {
-    setSeleccionLiquidacion((prev) => ({ ...prev, [lineaId]: prev[lineaId] === estado ? 'PENDIENTE' : estado }));
+  function agruparProductosPorSku(productos) {
+    const grupos = {};
+    productos.forEach((p) => {
+      const sku = p.producto.sku;
+      if (!grupos[sku]) grupos[sku] = { sku, precioUnitario: p.precioAlMomento, lineas: [] };
+      grupos[sku].lineas.push(p);
+    });
+    return Object.values(grupos);
+  }
+
+  function actualizarCantidadesGrupo(grupo, vendidas, devueltas) {
+    const totalGrupo = grupo.lineas.length;
+    let v = parseInt(vendidas, 10);
+    let d = parseInt(devueltas, 10);
+    if (isNaN(v) || v < 0) v = 0;
+    if (isNaN(d) || d < 0) d = 0;
+    if (v + d > totalGrupo) {
+      if (v > totalGrupo) v = totalGrupo;
+      d = Math.max(0, totalGrupo - v);
+    }
+
+    setSeleccionLiquidacion((prev) => {
+      const nuevo = { ...prev };
+      grupo.lineas.forEach((linea, index) => {
+        if (index < v) nuevo[linea.id] = 'VENDIDO';
+        else if (index < v + d) nuevo[linea.id] = 'DEVUELTO';
+        else nuevo[linea.id] = 'PENDIENTE';
+      });
+      return nuevo;
+    });
+  }
+
+  function contarEstadoGrupo(grupo, estado) {
+    return grupo.lineas.filter((l) => seleccionLiquidacion[l.id] === estado).length;
   }
 
   function toggleProductoNuevoCredito(productoId) {
@@ -400,30 +432,49 @@ export default function CreditosMayorista() {
                   liquidando === c.id ? (
                     <div className="border-t border-[#2a251c] pt-3 mt-3">
                       <p className="text-xs text-[#8a8478] uppercase mb-2">
-                        Marca el estado de cada pieza (Vendida / Devuelta / sin marcar = se la queda y paga)
+                        Indica cuántas piezas de cada producto se vendieron o devolvieron (el resto se queda con el mayorista, quien las paga)
                       </p>
                       <div className="space-y-2 mb-3">
-                        {c.productos.map((p) => (
-                          <div key={p.id} className="flex items-center justify-between text-xs border border-[#2a251c] p-2">
-                            <span className="text-[#f5f1e8]">{p.producto.sku} — ${Number(p.precioAlMomento).toFixed(2)}</span>
-                            <div className="flex gap-2">
-                              <button
-                                type="button"
-                                onClick={() => marcarEstadoPieza(p.id, 'VENDIDO')}
-                                className={`px-2 py-1 border ${seleccionLiquidacion[p.id] === 'VENDIDO' ? 'border-blue-400 text-blue-400' : 'border-[#3a352c] text-[#8a8478]'}`}
-                              >
-                                Vendida
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => marcarEstadoPieza(p.id, 'DEVUELTO')}
-                                className={`px-2 py-1 border ${seleccionLiquidacion[p.id] === 'DEVUELTO' ? 'border-green-400 text-green-400' : 'border-[#3a352c] text-[#8a8478]'}`}
-                              >
-                                Devolver
-                              </button>
+                        {agruparProductosPorSku(c.productos).map((grupo) => {
+                          const vendidas = contarEstadoGrupo(grupo, 'VENDIDO');
+                          const devueltas = contarEstadoGrupo(grupo, 'DEVUELTO');
+                          return (
+                            <div key={grupo.sku} className="border border-[#2a251c] p-2">
+                              <p className="text-xs text-[#f5f1e8] mb-1">
+                                {grupo.sku} — ${Number(grupo.precioUnitario).toFixed(2)} c/u — Cantidad total: {grupo.lineas.length}
+                              </p>
+                              <div className="flex gap-3 items-center text-xs">
+                                <label className="text-[#8a8478]">
+                                  Vendidas:
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max={grupo.lineas.length}
+                                    value={vendidas}
+                                    onChange={(e) => actualizarCantidadesGrupo(grupo, e.target.value, devueltas)}
+                                    onFocus={(e) => e.target.select()}
+                                    className="bg-transparent border border-[#3a352c] text-[#f5f1e8] px-2 py-1 w-14 ml-2"
+                                  />
+                                </label>
+                                <label className="text-[#8a8478]">
+                                  Devueltas:
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max={grupo.lineas.length}
+                                    value={devueltas}
+                                    onChange={(e) => actualizarCantidadesGrupo(grupo, vendidas, e.target.value)}
+                                    onFocus={(e) => e.target.select()}
+                                    className="bg-transparent border border-[#3a352c] text-[#f5f1e8] px-2 py-1 w-14 ml-2"
+                                  />
+                                </label>
+                                <span className="text-[#8a8478] ml-auto">
+                                  Se queda con: {grupo.lineas.length - vendidas - devueltas}
+                                </span>
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
 
                       <select
