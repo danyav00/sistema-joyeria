@@ -27,14 +27,10 @@ async function buscarVentaPorFolio(req, res) {
 
 async function crearDevolucion(req, res) {
   try {
-    const { tipo, ventaOriginalId, productoDevueltoId, danado, productoNuevoId, metodoPago } = req.body;
+    const { ventaOriginalId, productoDevueltoId, danado, productoNuevoId, metodoPago } = req.body;
 
-    if (!tipo || !ventaOriginalId || !productoDevueltoId) {
+    if (!ventaOriginalId || !productoDevueltoId || !productoNuevoId) {
       return res.status(400).json({ error: 'Faltan datos obligatorios' });
-    }
-
-    if (tipo === 'CAMBIO' && !productoNuevoId) {
-      return res.status(400).json({ error: 'Un cambio requiere un producto nuevo' });
     }
 
     const resultado = await prisma.$transaction(async (tx) => {
@@ -44,49 +40,42 @@ async function crearDevolucion(req, res) {
       });
       if (!productoDevuelto) throw new Error('Producto devuelto no encontrado');
 
-      let diferencia = 0;
-      let productoNuevo = null;
+      const productoNuevo = await tx.producto.findUnique({
+        where: { id: Number(productoNuevoId) },
+        include: { codigoPrecio: true },
+      });
+      if (!productoNuevo) throw new Error('Producto nuevo no encontrado');
+      if (productoNuevo.estado !== 'DISPONIBLE') throw new Error(`Producto ${productoNuevo.nombre} no esta disponible`);
+      if (productoNuevo.existencia < 1) throw new Error(`Producto ${productoNuevo.nombre} sin existencia`);
 
-      if (tipo === 'CAMBIO') {
-        productoNuevo = await tx.producto.findUnique({
-          where: { id: Number(productoNuevoId) },
-          include: { codigoPrecio: true },
-        });
-        if (!productoNuevo) throw new Error('Producto nuevo no encontrado');
-        if (productoNuevo.estado !== 'DISPONIBLE') throw new Error(`Producto ${productoNuevo.nombre} no esta disponible`);
-        if (productoNuevo.existencia < 1) throw new Error(`Producto ${productoNuevo.nombre} sin existencia`);
+      const precioDevuelto = Number(productoDevuelto.codigoPrecio.precio);
+      const precioNuevo = Number(productoNuevo.codigoPrecio.precio);
+      const diferencia = Math.max(0, precioNuevo - precioDevuelto);
 
-        const precioDevuelto = Number(productoDevuelto.codigoPrecio.precio);
-        const precioNuevo = Number(productoNuevo.codigoPrecio.precio);
-        diferencia = Math.max(0, precioNuevo - precioDevuelto);
-
-        if (diferencia > 0 && !metodoPago) {
-          throw new Error('Se requiere metodo de pago para la diferencia');
-        }
-
-        // El producto nuevo sale del inventario
-        const nuevaExistencia = productoNuevo.existencia - 1;
-        await tx.producto.update({
-          where: { id: productoNuevo.id },
-          data: {
-            existencia: nuevaExistencia,
-            estado: nuevaExistencia === 0 ? 'VENDIDO' : 'DISPONIBLE',
-          },
-        });
-
-        await tx.movimientoInventario.create({
-          data: {
-            productoId: productoNuevo.id,
-            tipoMovimiento: 'VENTA',
-            cantidad: 1,
-            usuarioId: req.usuario.id,
-            nota: 'Entregado por cambio',
-          },
-        });
+      if (diferencia > 0 && !metodoPago) {
+        throw new Error('Se requiere metodo de pago para la diferencia');
       }
 
-      // El producto devuelto: solo regresa al inventario si NO esta danado
-      const estaDanado = tipo === 'DEVOLUCION' && !!danado;
+      const nuevaExistencia = productoNuevo.existencia - 1;
+      await tx.producto.update({
+        where: { id: productoNuevo.id },
+        data: {
+          existencia: nuevaExistencia,
+          estado: nuevaExistencia === 0 ? 'VENDIDO' : 'DISPONIBLE',
+        },
+      });
+
+      await tx.movimientoInventario.create({
+        data: {
+          productoId: productoNuevo.id,
+          tipoMovimiento: 'VENTA',
+          cantidad: 1,
+          usuarioId: req.usuario.id,
+          nota: 'Entregado por cambio',
+        },
+      });
+
+      const estaDanado = !!danado;
 
       if (!estaDanado) {
         await tx.producto.update({
@@ -100,18 +89,17 @@ async function crearDevolucion(req, res) {
             tipoMovimiento: 'DEVOLUCION',
             cantidad: 1,
             usuarioId: req.usuario.id,
-            nota: tipo === 'DEVOLUCION' ? 'Devolucion por garantia' : 'Devolucion/cambio de venta',
+            nota: 'Devolucion/cambio de venta',
           },
         });
       } else {
-        // Producto danado: se da de baja, no regresa al inventario
         await tx.movimientoInventario.create({
           data: {
             productoId: productoDevuelto.id,
             tipoMovimiento: 'CANCELACION',
             cantidad: 0,
             usuarioId: req.usuario.id,
-            nota: 'Producto danado dado de baja por devolucion de garantia',
+            nota: 'Producto danado dado de baja por cambio',
           },
         });
       }
@@ -119,10 +107,10 @@ async function crearDevolucion(req, res) {
       const devolucion = await tx.devolucion.create({
         data: {
           folio: generarFolio(),
-          tipo,
+          tipo: 'CAMBIO',
           ventaOriginalId: Number(ventaOriginalId),
           productoDevueltoId: productoDevuelto.id,
-          productoNuevoId: productoNuevo ? productoNuevo.id : null,
+          productoNuevoId: productoNuevo.id,
           danado: estaDanado,
           diferenciaPagada: diferencia,
           metodoPago: diferencia > 0 ? metodoPago : null,
@@ -141,13 +129,13 @@ async function crearDevolucion(req, res) {
 
     await registrarAuditoria({
       usuarioId: req.usuario.id,
-      accion: resultado.tipo === 'DEVOLUCION' ? 'Registro devolucion por garantia' : 'Registro cambio de producto',
+      accion: resultado.danado ? 'Registro cambio por pieza defectuosa' : 'Registro cambio de producto',
       tablaAfectada: 'devoluciones',
       registroId: resultado.id,
       detalle: `Folio ${resultado.folio}, diferencia $${resultado.diferenciaPagada}`,
     });
 
-     res.status(201).json({ ...resultado, versiculo: obtenerVersiculoAleatorio() });
+    res.status(201).json({ ...resultado, versiculo: obtenerVersiculoAleatorio() });
   } catch (error) {
     console.error(error);
     res.status(400).json({ error: error.message || 'Error al registrar la devolucion' });

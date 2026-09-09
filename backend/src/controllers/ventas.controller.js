@@ -35,7 +35,8 @@ async function crearVenta(req, res) {
 
         if (!producto.tieneDescuentoAplicado) {
           if (tipoDescuento === 'MAYORISTA') {
-            precioUnitario = precioBase * (1 - PORCENTAJE_MAYORISTA);
+            const porcentaje = producto.material === 'ORO_LAMINADO' ? 0.5 : 0.2;
+            precioUnitario = precioBase * (1 - porcentaje);
           } else if (tipoDescuento === 'LOCATARIO') {
             precioUnitario = precioBase * (1 - PORCENTAJE_LOCATARIO);
           }

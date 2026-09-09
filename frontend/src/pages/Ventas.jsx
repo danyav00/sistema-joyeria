@@ -64,7 +64,8 @@ export default function Ventas() {
     if (producto.tieneDescuentoAplicado) return base;
 
     if (tipoDescuento === 'MAYORISTA') {
-      return redondear(base * 0.5);
+      const porcentaje = producto.material === 'ORO_LAMINADO' ? 0.5 : 0.2;
+      return redondear(base * (1 - porcentaje));
     }
     if (tipoDescuento === 'LOCATARIO') {
       return redondear(base * 0.8);

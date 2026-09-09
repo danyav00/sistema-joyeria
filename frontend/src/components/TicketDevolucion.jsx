@@ -1,6 +1,5 @@
 export default function TicketDevolucion({ devolucion, atendio, versiculo }) {
   const fecha = new Date(devolucion.fecha);
-  const esCambio = devolucion.tipo === 'CAMBIO';
 
   return (
     <div
@@ -21,7 +20,7 @@ export default function TicketDevolucion({ devolucion, atendio, versiculo }) {
         <p style={{ fontSize: '9px', margin: 0 }}>IG: joyerias.nixca</p>
         <p style={{ fontSize: '9px', margin: '0 0 4px 0' }}>FB: joyerías nixca</p>
         <p style={{ fontSize: '10px', fontWeight: 'bold', margin: '4px 0', borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '2px 0' }}>
-          {esCambio ? 'TICKET DE CAMBIO' : 'TICKET DE DEVOLUCIÓN (GARANTÍA)'}
+          {devolucion.danado ? 'TICKET DE CAMBIO POR GARANTÍA' : 'TICKET DE CAMBIO'}
         </p>
         <p style={{ margin: 0 }}>Folio: {devolucion.folio}</p>
         <p style={{ margin: 0 }}>{fecha.toLocaleDateString('es-MX')} {fecha.toLocaleTimeString('es-MX')}</p>
@@ -30,38 +29,30 @@ export default function TicketDevolucion({ devolucion, atendio, versiculo }) {
       </div>
 
       <div style={{ borderTop: '1px dashed #000', borderBottom: '1px dashed #000', padding: '6px 0', margin: '6px 0' }}>
-        <p style={{ margin: '0 0 4px 0', fontSize: '9px', fontWeight: 'bold' }}>
-          Producto {esCambio ? 'devuelto' : 'en garantía'}:
-        </p>
+        <p style={{ margin: '0 0 4px 0', fontSize: '9px', fontWeight: 'bold' }}>Producto devuelto:</p>
         <p style={{ margin: '0 0 3px 0', fontSize: '9px' }}>
           {devolucion.productoDevuelto?.sku} — {devolucion.productoDevuelto?.nombre}
         </p>
-        {!esCambio && devolucion.danado && (
+        {devolucion.danado && (
           <p style={{ margin: '0 0 3px 0', fontSize: '8px', color: '#a00' }}>Producto dañado — dado de baja del inventario</p>
         )}
 
-        {esCambio && (
-          <>
-            <p style={{ margin: '8px 0 4px 0', fontSize: '9px', fontWeight: 'bold' }}>Producto nuevo entregado:</p>
-            <p style={{ margin: '0 0 3px 0', fontSize: '9px' }}>
-              {devolucion.productoNuevo?.sku} — {devolucion.productoNuevo?.nombre}
-            </p>
-          </>
-        )}
+        <p style={{ margin: '8px 0 4px 0', fontSize: '9px', fontWeight: 'bold' }}>Producto nuevo entregado:</p>
+        <p style={{ margin: '0 0 3px 0', fontSize: '9px' }}>
+          {devolucion.productoNuevo?.sku} — {devolucion.productoNuevo?.nombre}
+        </p>
       </div>
 
       <div style={{ marginBottom: '10px' }}>
-        {esCambio && Number(devolucion.diferenciaPagada) > 0 ? (
+        {Number(devolucion.diferenciaPagada) > 0 ? (
           <>
             <p style={{ margin: 0, fontWeight: 'bold', display: 'flex', justifyContent: 'space-between' }}>
               <span>DIFERENCIA PAGADA:</span><span>${Number(devolucion.diferenciaPagada).toFixed(2)}</span>
             </p>
             <p style={{ margin: '2px 0 0 0', fontSize: '9px' }}>Método de pago: {devolucion.metodoPago}</p>
           </>
-        ) : esCambio ? (
-          <p style={{ margin: 0, fontSize: '9px' }}>Cambio sin costo adicional (igual o menor precio).</p>
         ) : (
-          <p style={{ margin: 0, fontSize: '9px' }}>Sin costo. No entra ni sale dinero por esta garantía.</p>
+          <p style={{ margin: 0, fontSize: '9px' }}>Cambio sin costo adicional (igual o menor precio).</p>
         )}
       </div>
 
@@ -72,7 +63,7 @@ export default function TicketDevolucion({ devolucion, atendio, versiculo }) {
           </p>
         </div>
 
-              <p style={{ fontSize: '9px' }}>¡Gracias por su compra!</p>
+        <p style={{ fontSize: '9px' }}>¡Gracias por su compra!</p>
 
         {versiculo && <p style={{ fontStyle: 'italic', fontSize: '10px', marginTop: '8px' }}>"{versiculo}"</p>}
       </div>
