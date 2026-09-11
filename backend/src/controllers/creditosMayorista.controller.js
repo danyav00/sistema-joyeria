@@ -156,33 +156,23 @@ async function liquidarCredito(req, res) {
       if (credito.estado !== 'ACTIVO') throw new Error('Este credito ya fue liquidado o cancelado');
 
       const idsVendidos = productosVendidos || [];
-      const idsDevueltos = productosDevueltos || [];
 
       const totalVendidoReal = credito.productos
         .filter((p) => idsVendidos.includes(p.id))
         .reduce((suma, p) => suma + Number(p.precioAlMomento), 0);
 
-      const porcentajeVendido = totalVendidoReal / Number(credito.totalCredito);
-      const cumpleMinimo = porcentajeVendido >= PORCENTAJE_MINIMO_VENTA;
-
-      let totalAPagar = 0;
+      let totalAPagar = totalVendidoReal;
 
       for (const detalle of credito.productos) {
         const seVendio = idsVendidos.includes(detalle.id);
-        const seDevuelve = idsDevueltos.includes(detalle.id);
 
-        if (seVendio && seDevuelve) {
-          throw new Error(`El producto ${detalle.producto.sku} no puede estar marcado como vendido y devuelto a la vez`);
-        }
-
-        if (seDevuelve) {
-          if (!cumpleMinimo) {
-            throw new Error('No cumple el minimo de venta (50%), no se pueden devolver productos');
-          }
-          if (detalle.producto.material !== 'ORO_LAMINADO') {
-            throw new Error(`El producto ${detalle.producto.sku} no es Oro Laminado, no se acepta devolucion`);
-          }
-
+        if (seVendio) {
+          await tx.creditoMayoristaProducto.update({
+            where: { id: detalle.id },
+            data: { vendido: true },
+          });
+        } else {
+          // Todo lo no vendido regresa automaticamente al inventario
           const productoDevuelto = await tx.producto.findUnique({ where: { id: detalle.productoId } });
           await tx.producto.update({
             where: { id: detalle.productoId },
@@ -200,15 +190,8 @@ async function liquidarCredito(req, res) {
               tipoMovimiento: 'DEVOLUCION',
               cantidad: 1,
               usuarioId: req.usuario.id,
-              nota: 'Devolucion de credito de mayorista',
+              nota: 'Devolucion automatica de credito de mayorista (no vendido)',
             },
-          });
-        } else {
-          totalAPagar += Number(detalle.precioAlMomento);
-
-          await tx.creditoMayoristaProducto.update({
-            where: { id: detalle.id },
-            data: { vendido: seVendio },
           });
         }
       }
