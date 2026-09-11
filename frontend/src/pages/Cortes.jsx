@@ -99,7 +99,10 @@ export default function Cortes() {
           {cortes.map((c) => (
             <div key={c.id} className="border border-[#2a251c] p-4">
               <div className="flex justify-between mb-2">
-                <p className="text-[#f5f1e8] text-sm">{c.turno.tipo} — {new Date(c.fecha).toLocaleDateString('es-MX')}</p>
+                <div>
+                  <p className="text-[#f5f1e8] text-sm">{c.turno.tipo} — {new Date(c.fecha).toLocaleDateString('es-MX')}</p>
+                  <p className="text-[#8a8478] text-xs">Realizado por: {c.usuario?.nombre || '—'}</p>
+                </div>
                 <p className="text-[#c9a227]">${Number(c.totalFinal).toFixed(2)}</p>
               </div>
                            <div className="grid grid-cols-4 gap-3 text-xs text-[#8a8478] mb-2">
