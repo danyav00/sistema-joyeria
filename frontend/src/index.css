@@ -8,6 +8,10 @@
 .light-mode img {
   filter: invert(1) hue-rotate(180deg);
 }
+@page {
+  margin: 0;
+}
+
 @media print {
   body * {
     visibility: hidden;

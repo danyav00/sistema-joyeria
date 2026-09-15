@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../services/api';
 import Layout from '../components/Layout';
 import TicketCredito from '../components/TicketCredito';
+import { imprimirEnVentanaNueva } from '../utils/imprimirTicket';
 
 function nombreConMaterial(producto) {
   if (producto.material === 'PLATA') return `${producto.nombre} Plata`;
@@ -545,9 +546,9 @@ export default function CreditosMayorista() {
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 print:bg-white print:relative">
           <div className="bg-[#1a1815] p-4 max-h-[90vh] overflow-auto print:bg-white print:p-0 print:max-h-none">
             <div className="print:hidden flex justify-between items-center mb-4 gap-4">
-              <button onClick={() => window.print()} className="bg-[#c9a227] text-[#1a1815] px-4 py-2 text-sm font-medium">
-                Imprimir ticket
-              </button>
+              <button onClick={() => imprimirEnVentanaNueva('ticket-imprimir')} className="bg-[#c9a227] text-[#1a1815] px-4 py-2 text-sm font-medium">
+  Imprimir ticket
+</button>
               <button onClick={() => setTicketCredito(null)} className="text-[#8a8478] text-sm hover:text-[#f5f1e8]">
                 Cerrar
               </button>

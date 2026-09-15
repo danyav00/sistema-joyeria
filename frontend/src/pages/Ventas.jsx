@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../services/api';
 import Layout from '../components/Layout';
 import Ticket from '../components/Ticket';
+import { imprimirEnVentanaNueva } from '../utils/imprimirTicket';
 import logo from '../assets/logo.png';
 
 function redondear(num) {
@@ -227,7 +228,7 @@ export default function Ventas() {
   }
 
   function imprimirTicket() {
-    window.print();
+    imprimirEnVentanaNueva('ticket-imprimir');
   }
 
   if (cargando) {
