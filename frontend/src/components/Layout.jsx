@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { aplicarColorPestana } from '../utils/colorPestana';
 import logo from '../assets/logo.png';
 
 const menuItems = [
@@ -31,6 +32,10 @@ export default function Layout({ children }) {
       document.documentElement.classList.remove('dark');
     }
   }, [modoOscuro]);
+
+  useEffect(() => {
+    aplicarColorPestana(usuario);
+  }, [usuario]);
 
   const itemsVisibles = menuItems.filter((item) => item.roles.includes(usuario?.rol));
 
