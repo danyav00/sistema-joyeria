@@ -19,15 +19,16 @@ export default function Ticket({ venta, versiculo, tipoTicket }) {
   return (
     <div
       id="ticket-imprimir"
-      style={{
-        width: '7.9cm',
-        minHeight: '18cm',
-        padding: '0.3cm',
-        fontFamily: "'Courier New', monospace",
-        fontSize: '11px',
-        color: '#000',
-        background: '#fff',
-      }}
+     style={{
+  width: '7.6cm',
+  minHeight: '18cm',
+  padding: '0.25cm',
+  fontFamily: "'Courier New', Courier, monospace",
+  fontSize: '12px',
+  color: '#000',
+  background: '#fff',
+  lineHeight: '1.25',
+}}
     >
       <div style={{ textAlign: 'center', marginBottom: '8px' }}>
         <p style={{ fontSize: '14px', fontWeight: 'bold', margin: 0 }}>NIXCA JOYERÍA</p>
