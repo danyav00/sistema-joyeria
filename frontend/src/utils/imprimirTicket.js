@@ -5,7 +5,7 @@ export function imprimirEnVentanaNueva(elementoId) {
     return;
   }
 
-  const ventana = window.open('', '_blank', 'width=350,height=700');
+  const ventana = window.open('', '_blank', 'width=320,height=700');
   if (!ventana) {
     alert('El navegador bloqueó la ventana de impresión. Permite ventanas emergentes para este sitio.');
     return;
@@ -18,8 +18,34 @@ export function imprimirEnVentanaNueva(elementoId) {
         <title>Ticket</title>
         <meta charset="UTF-8" />
         <style>
-          @page { margin: 0; }
-          body { margin: 0; padding: 0; }
+          @page {
+            size: 80mm auto;
+            margin: 0;
+          }
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+          }
+          html, body {
+            margin: 0;
+            padding: 0;
+            width: 80mm;
+            background: #fff;
+          }
+          body {
+            font-family: 'Courier New', Courier, monospace;
+            color: #000;
+            -webkit-font-smoothing: none;
+            font-smooth: never;
+          }
+          #ticket-imprimir {
+            width: 76mm !important;
+            max-width: 76mm !important;
+            margin: 0 auto;
+            padding: 2mm !important;
+            box-sizing: border-box;
+          }
         </style>
       </head>
       <body>
@@ -27,11 +53,13 @@ export function imprimirEnVentanaNueva(elementoId) {
       </body>
     </html>
   `);
+
   ventana.document.close();
 
-  ventana.onload = () => {
+  // Pequeña espera para que cargue bien el contenido antes de imprimir
+  setTimeout(() => {
     ventana.focus();
     ventana.print();
-    setTimeout(() => ventana.close(), 500);
-  };
+    setTimeout(() => ventana.close(), 800);
+  }, 300);
 }
