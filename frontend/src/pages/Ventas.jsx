@@ -75,25 +75,31 @@ export default function Ventas() {
   }
 
   function agregarAlCarrito(producto) {
-    const yaExiste = carrito.find((item) => item.productoId === producto.id);
-    if (yaExiste) {
-      if (yaExiste.cantidad >= producto.existencia) return;
-      setCarrito(carrito.map((item) =>
-        item.productoId === producto.id ? { ...item, cantidad: item.cantidad + 1 } : item
-      ));
-    } else {
-      setCarrito([...carrito, {
-        productoId: producto.id,
-        nombre: nombreConMaterial(producto),
-        sku: producto.sku,
-        existenciaMaxima: producto.existencia,
-        tieneDescuentoAplicado: producto.tieneDescuentoAplicado,
-        precioBase: Number(producto.codigoPrecio.precio),
-        precio: precioConDescuento(producto),
-        cantidad: 1,
-      }]);
-    }
+  // === BLOQUEO DE STOCK ===
+  if (producto.existencia <= 0) {
+    setMensajeBusqueda('Producto agotado');
+    return;
   }
+
+  const yaExiste = carrito.find((item) => item.productoId === producto.id);
+  if (yaExiste) {
+    if (yaExiste.cantidad >= producto.existencia) return;
+    setCarrito(carrito.map((item) =>
+      item.productoId === producto.id ? { ...item, cantidad: item.cantidad + 1 } : item
+    ));
+  } else {
+    setCarrito([...carrito, {
+      productoId: producto.id,
+      nombre: nombreConMaterial(producto),
+      sku: producto.sku,
+      existenciaMaxima: producto.existencia,
+      tieneDescuentoAplicado: producto.tieneDescuentoAplicado,
+      precioBase: Number(producto.codigoPrecio.precio),
+      precio: precioConDescuento(producto),
+      cantidad: 1,
+    }]);
+  }
+}
 
   function buscarPorSku(e) {
     e.preventDefault();
@@ -339,12 +345,32 @@ export default function Ventas() {
           {mensajeBusqueda && <p className="text-red-400 text-xs -mt-2 mb-4">{mensajeBusqueda}</p>}
 
           <div className="grid grid-cols-2 gap-3">
-            {productosFiltrados.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => agregarAlCarrito(p)}
-                className="border border-[#2a251c] hover:border-[#c9a227] p-4 text-left transition-colors"
-              >
+           {productosFiltrados.map((p) => {
+  const agotado = p.existencia <= 0;
+
+  return (
+    <button
+      key={p.id}
+      onClick={() => !agotado && agregarAlCarrito(p)}
+      disabled={agotado}
+      className={`border p-4 text-left transition-colors ${
+        agotado
+          ? 'border-[#2a251c] opacity-50 cursor-not-allowed'
+          : 'border-[#2a251c] hover:border-[#c9a227]'
+      }`}
+    >
+      <p className="text-[#f5f1e8] text-sm">
+        {nombreConMaterial(p)} {p.tieneDescuentoAplicado && <span className="text-amber-400 text-xs">(OFF)</span>}
+      </p>
+      <p className="text-[#8a8478] text-xs">
+        {p.sku} • {p.material} • {agotado ? 'Agotado' : `Existencia: ${p.existencia}`}
+      </p>
+      <p className="text-[#c9a227] mt-1">
+        {agotado ? 'Agotado' : `$${precioConDescuento(p).toFixed(2)}`}
+      </p>
+    </button>
+  );
+})}
                 <p className="text-[#f5f1e8] text-sm">
                   {nombreConMaterial(p)} {p.tieneDescuentoAplicado && <span className="text-amber-400 text-xs">(OFF)</span>}
                 </p>
