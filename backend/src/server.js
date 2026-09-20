@@ -1,6 +1,8 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const authMiddleware = require('./middlewares/auth');
+
 
 const app = express();
 
@@ -36,6 +38,8 @@ const auditoriaRoutes = require('./routes/auditoria.routes');
 app.use('/api/auditoria', auditoriaRoutes);
 const ticketsRoutes = require('./routes/tickets.routes');
 app.use('/api/tickets', ticketsRoutes);
+const { obtenerDashboard } = require('./controllers/dashboard.controller');
+app.get('/dashboard', authMiddleware, obtenerDashboard);
 const devolucionesRoutes = require('./routes/devoluciones.routes');
 app.use('/api/devoluciones', devolucionesRoutes);
 
