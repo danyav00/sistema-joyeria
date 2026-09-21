@@ -11,6 +11,12 @@ export function imprimirEnVentanaNueva(elementoId) {
     return;
   }
 
+  // Clonamos el contenido y forzamos estilos críticos
+  const clon = contenido.cloneNode(true);
+  clon.style.color = '#000';
+  clon.style.background = '#fff';
+  clon.style.backgroundColor = '#fff';
+
   ventana.document.write(`
     <!DOCTYPE html>
     <html>
@@ -26,40 +32,47 @@ export function imprimirEnVentanaNueva(elementoId) {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
             color-adjust: exact !important;
+            color: #000 !important;
+            background: #fff !important;
+            background-color: #fff !important;
           }
           html, body {
-            margin: 0;
-            padding: 0;
-            width: 80mm;
-            background: #fff;
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 80mm !important;
+            background: #fff !important;
+            color: #000 !important;
           }
           body {
-            font-family: 'Courier New', Courier, monospace;
-            color: #000;
+            font-family: 'Courier New', Courier, monospace !important;
             -webkit-font-smoothing: none;
-            font-smooth: never;
           }
           #ticket-imprimir {
             width: 76mm !important;
             max-width: 76mm !important;
-            margin: 0 auto;
+            margin: 0 auto !important;
             padding: 2mm !important;
-            box-sizing: border-box;
+            box-sizing: border-box !important;
+            background: #fff !important;
+            color: #000 !important;
+          }
+          /* Forzar todos los textos a negro */
+          p, span, div {
+            color: #000 !important;
           }
         </style>
       </head>
       <body>
-        ${contenido.outerHTML}
+        ${clon.outerHTML}
       </body>
     </html>
   `);
 
   ventana.document.close();
 
-  // Pequeña espera para que cargue bien el contenido antes de imprimir
   setTimeout(() => {
     ventana.focus();
     ventana.print();
-    setTimeout(() => ventana.close(), 800);
-  }, 300);
+    setTimeout(() => ventana.close(), 1000);
+  }, 400);
 }

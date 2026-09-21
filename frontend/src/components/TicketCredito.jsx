@@ -14,15 +14,16 @@ export default function TicketCredito({ credito, tipo, versiculo, atendio }) {
     <div
       id="ticket-imprimir"
       style={{
-        width: '7.6cm',
-        minHeight: '18cm',
-        padding: '0.3cm',
-        fontFamily: "'Courier New', Courier, monospace",
-        fontSize: '13px',
-        color: '#000',
-        background: '#fff',
-        lineHeight: '1.3',
-      }}
+  width: '7.6cm',
+  minHeight: '18cm',
+  padding: '0.3cm',
+  fontFamily: "'Courier New', Courier, monospace",
+  fontSize: '13px',
+  color: '#000000',
+  backgroundColor: '#ffffff',
+  background: '#ffffff',
+  lineHeight: '1.3',
+}}
     >
       <div style={{ textAlign: 'center', marginBottom: '10px' }}>
         <p style={{ fontSize: '16px', fontWeight: 'bold', margin: 0 }}>NIXCA JOYERÍA</p>
