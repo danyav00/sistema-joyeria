@@ -48,6 +48,15 @@ export default function Apartados() {
   async function crearApartado(e) {
     e.preventDefault();
     setMensaje('');
+    const producto = productos.find((p) => p.id === Number(form.productoId));
+if (!producto || producto.existencia <= 0) {
+  setMensaje('Producto agotado o no disponible');
+  return;
+}
+if (Number(form.cantidad) > producto.existencia) {
+  setMensaje(`Solo hay ${producto.existencia} disponibles`);
+  return;
+}
     try {
       const res = await api.post('/apartados', form);
       setForm({ productoId: '', clienteNombre: '', clienteTelefono: '', anticipo: '', cantidad: 1 });
@@ -161,62 +170,120 @@ export default function Apartados() {
         </div>
 
         {mostrarForm && (
-          <form onSubmit={crearApartado} className="border border-[#2a251c] p-5 mb-6 grid grid-cols-2 gap-4">
-            <input
-              type="text"
-              placeholder="Buscar producto por SKU o nombre..."
-              value={busquedaProducto}
-              onChange={(e) => setBusquedaProducto(e.target.value)}
-              className="bg-transparent border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227] col-span-2"
-            />
+  <form onSubmit={crearApartado} className="border border-[#2a251c] p-5 mb-6 grid grid-cols-2 gap-4">
+    {/* Input de búsqueda con selección automática */}
+    <input
+      type="text"
+      placeholder="Teclea código o SKU del producto..."
+      value={busquedaProducto}
+      onChange={(e) => setBusquedaProducto(e.target.value)}
+     onKeyPress={(e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const encontrado = productos.find(
+      (p) =>
+        p.sku.toLowerCase() === busquedaProducto.toLowerCase() ||
+        p.nombre.toLowerCase() === busquedaProducto.toLowerCase()
+    );
 
-            <select value={form.productoId} onChange={(e) => setForm({ ...form, productoId: e.target.value })}
-              className="bg-[#1a1815] border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227] col-span-2" required>
-              <option value="">Selecciona un producto</option>
-              {productosFiltrados.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.sku} — {p.nombre} — ${Number(p.codigoPrecio.precio).toFixed(2)} — Existencia: {p.existencia}
-                </option>
-              ))}
-            </select>
+    if (!encontrado) {
+      setMensaje('Producto no encontrado');
+      return;
+    }
 
-            {productoSeleccionado && (
-              <div className="col-span-2">
-                <label className="text-xs text-[#8a8478] uppercase">Cantidad (máximo {productoSeleccionado.existencia})</label>
-                <input
-                  type="number"
-                  min="1"
-                  max={productoSeleccionado.existencia}
-                  value={form.cantidad}
-                  onChange={(e) => setForm({ ...form, cantidad: e.target.value })}
-                  onBlur={(e) => {
-                    let val = parseInt(e.target.value, 10);
-                    if (isNaN(val) || val < 1) val = 1;
-                    if (val > productoSeleccionado.existencia) val = productoSeleccionado.existencia;
-                    setForm((prev) => ({ ...prev, cantidad: val }));
-                  }}
-                  onFocus={(e) => e.target.select()}
-                  className="w-full bg-transparent border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227]"
-                />
-              </div>
-            )}
+    if (encontrado.existencia <= 0) {
+      setMensaje('Producto agotado');
+      return;
+    }
 
-            <input placeholder="Nombre del cliente" value={form.clienteNombre} onChange={(e) => setForm({ ...form, clienteNombre: e.target.value })}
-              className="bg-transparent border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227]" required />
+    setForm({ ...form, productoId: encontrado.id });
+    setMensaje(`Producto seleccionado: ${encontrado.nombre}`);
+  }
+}}
+      className="bg-transparent border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227] col-span-2"
+    />
 
-            <input placeholder="Teléfono" value={form.clienteTelefono} onChange={(e) => setForm({ ...form, clienteTelefono: e.target.value })}
-              className="bg-transparent border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227]" required />
+    {/* Select como respaldo */}
+  <select
+  value={form.productoId}
+  onChange={(e) => setForm({ ...form, productoId: e.target.value })}
+  className="bg-[#1a1815] border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227] col-span-2"
+  required
+>
+  <option value="">Selecciona un producto</option>
+  {productosFiltrados.map((p) => {
+    const agotado = p.existencia <= 0;
+    return (
+      <option 
+        key={p.id} 
+        value={p.id}
+        disabled={agotado}
+      >
+        {p.sku} — {p.nombre} — ${Number(p.codigoPrecio.precio).toFixed(2)} — {agotado ? 'Agotado' : `Existencia: ${p.existencia}`}
+      </option>
+    );
+  })}
+</select>
 
-            <input type="number" placeholder="Anticipo (mínimo 20%)" value={form.anticipo} onChange={(e) => setForm({ ...form, anticipo: e.target.value })}
-              className="bg-transparent border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227] col-span-2" required />
+    {productoSeleccionado && (
+      <div className="col-span-2">
+        <label className="text-xs text-[#8a8478] uppercase">
+          Cantidad (máximo {productoSeleccionado.existencia})
+        </label>
+        <input
+          type="number"
+          min="1"
+          max={productoSeleccionado.existencia}
+          value={form.cantidad}
+          onChange={(e) => setForm({ ...form, cantidad: e.target.value })}
+          onBlur={(e) => {
+            let val = parseInt(e.target.value, 10);
+            if (isNaN(val) || val < 1) val = 1;
+            if (val > productoSeleccionado.existencia) val = productoSeleccionado.existencia;
+            setForm((prev) => ({ ...prev, cantidad: val }));
+          }}
+          onFocus={(e) => e.target.select()}
+          className="w-full bg-transparent border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227]"
+        />
+      </div>
+    )}
 
-            {mensaje && <p className="text-red-400 text-xs col-span-2">{mensaje}</p>}
+    <input
+      placeholder="Nombre del cliente"
+      value={form.clienteNombre}
+      onChange={(e) => setForm({ ...form, clienteNombre: e.target.value })}
+      className="bg-transparent border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227]"
+      required
+    />
 
-            <button type="submit" className="bg-[#c9a227] hover:bg-[#b8931f] text-[#1a1815] font-medium py-2 text-sm col-span-2">
-              Crear apartado
-            </button>
-          </form>
-        )}
+    <input
+      placeholder="Teléfono"
+      value={form.clienteTelefono}
+      onChange={(e) => setForm({ ...form, clienteTelefono: e.target.value })}
+      className="bg-transparent border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227]"
+      required
+    />
+
+    <input
+      type="number"
+      placeholder="Anticipo (mínimo 20%)"
+      value={form.anticipo}
+      onChange={(e) => setForm({ ...form, anticipo: e.target.value })}
+      className="bg-transparent border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227] col-span-2"
+      required
+    />
+
+    {mensaje && <p className="text-red-400 text-xs col-span-2">{mensaje}</p>}
+
+    <button
+      type="submit"
+      className="bg-[#c9a227] hover:bg-[#b8931f] text-[#1a1815] font-medium py-2 text-sm col-span-2"
+    >
+      Crear apartado
+    </button>
+  </form>
+)}
+
 
         {cargando ? (
           <p className="text-[#8a8478]">Cargando...</p>

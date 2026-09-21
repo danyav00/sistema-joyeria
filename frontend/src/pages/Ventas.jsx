@@ -371,15 +371,25 @@ export default function Ventas() {
     </button>
   );
 })}
-                <p className="text-[#f5f1e8] text-sm">
-                  {nombreConMaterial(p)} {p.tieneDescuentoAplicado && <span className="text-amber-400 text-xs">(OFF)</span>}
-                </p>
-                <p className="text-[#8a8478] text-xs">{p.sku} • {p.material} • Existencia: {p.existencia}</p>
-                <p className="text-[#c9a227] mt-1">${precioConDescuento(p).toFixed(2)}</p>
-              </button>
-            ))}
-          </div>
-        </div>
+              {productos.map((p) => (
+  <button key={p.id} className="w-full text-left p-3 rounded bg-[#1a1a1a]">
+    <p className="text-[#f5f1e8] text-sm">
+      {nombreConMaterial(p)}{" "}
+      {p.tieneDescuentoAplicado && (
+        <span className="text-amber-400 text-xs">(OFF)</span>
+      )}
+    </p>
+    <p className="text-[#8a8478] text-xs">
+      {p.sku} • {p.material} • Existencia: {p.existencia}
+    </p>
+    <p className="text-[#c9a227] mt-1">
+      ${precioConDescuento(p).toFixed(2)}
+    </p>
+  </button>
+))}
+</div>
+</div>
+
 
         <div className="border border-[#2a251c] p-5 h-fit">
           <h3 className="text-sm text-[#f5f1e8] uppercase tracking-wide mb-4">Carrito</h3>
