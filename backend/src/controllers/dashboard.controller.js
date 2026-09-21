@@ -17,6 +17,17 @@ async function obtenerDashboard(req, res) {
     const inicioMes = inicioDelMes();
     const ahora = new Date();
 
+    const usuario = req.user; // viene del middleware de auth
+
+    // 🔒 Filtrado por rol
+    let filtroVentas = {};
+    if (usuario.rol === "empleado") {
+      filtroVentas = {
+        empleadoId: usuario.id,
+        turnoId: usuario.turnoActual,
+      };
+    }
+
     const [
       ventasHoy,
       ventasMes,
@@ -25,9 +36,11 @@ async function obtenerDashboard(req, res) {
       apartadosActivos,
       mayoristasActivos,
     ] = await Promise.all([
-      prisma.venta.findMany({ where: { fecha: { gte: inicioDia, lte: ahora } } }),
       prisma.venta.findMany({
-        where: { fecha: { gte: inicioMes, lte: ahora } },
+        where: { ...filtroVentas, fecha: { gte: inicioDia, lte: ahora } },
+      }),
+      prisma.venta.findMany({
+        where: { ...filtroVentas, fecha: { gte: inicioMes, lte: ahora } },
         include: { detalles: { include: { producto: true } }, pagos: true },
       }),
       prisma.gasto.findMany({ where: { fecha: { gte: inicioMes, lte: ahora } } }),

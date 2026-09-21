@@ -34,6 +34,23 @@ export default function CreditosMayorista() {
 
   const [ticketCredito, setTicketCredito] = useState(null);
   const [expandido, setExpandido] = useState({});
+  const [skuCredito, setSkuCredito] = useState('');
+
+function agregarProductoPorSku(e) {
+  e.preventDefault();
+  const texto = skuCredito.trim().toLowerCase();
+  if (!texto) return;
+  let encontrado = productos.find((p) => p.sku.toLowerCase() === texto);
+  if (!encontrado) {
+    const filtrados = productos.filter((p) => p.sku.toLowerCase().includes(texto) || p.nombre.toLowerCase().includes(texto));
+    if (filtrados.length === 1) encontrado = filtrados[0];
+  }
+  if (!encontrado) { setMensaje('Producto no encontrado'); return; }
+  if (encontrado.existencia <= 0) { setMensaje('Producto agotado'); return; }
+  if (form.productosSeleccionados[encontrado.id] === undefined) toggleProducto(encontrado.id);
+  setSkuCredito('');
+  setMensaje('');
+}
 
   function toggleExpandido(creditoId) {
     setExpandido((prev) => ({ ...prev, [creditoId]: !prev[creditoId] }));
@@ -292,6 +309,12 @@ export default function CreditosMayorista() {
               </datalist>
 
               <p className="text-xs text-[#8a8478] uppercase mb-2">Buscar productos (solo Oro Laminado, mínimo $2,000 con 50% descuento)</p>
+              <form onSubmit={agregarProductoPorSku} className="flex gap-2 mb-2">
+  <input type="text" placeholder="Teclea el SKU y presiona Enter para agregar..." value={skuCredito}
+    onChange={(e) => setSkuCredito(e.target.value)}
+    className="w-full bg-transparent border border-[#3a352c] focus:border-[#c9a227] text-[#f5f1e8] px-3 py-2 text-sm outline-none" />
+  <button type="submit" className="bg-[#c9a227] text-[#1a1815] px-4 text-sm font-medium">Agregar</button>
+</form>
               <input
                 type="text"
                 placeholder="Buscar por SKU o nombre..."
