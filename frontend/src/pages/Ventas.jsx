@@ -481,7 +481,15 @@ export default function Ventas() {
           Cerrar
         </button>
       </div>
-      <Ticket venta={ticketData.venta} versiculo={ticketData.versiculo} tipoTicket="VENTA" />
+     <Ticket 
+  venta={ticketData.venta} 
+  versiculo={ticketData.versiculo} 
+  tipoTicket="VENTA"
+  montoRecibido={ticketData.venta.pagos?.reduce((suma, p) => suma + Number(p.monto), 0)}
+  cambio={
+    (ticketData.venta.pagos?.reduce((suma, p) => suma + Number(p.monto), 0) || 0) - Number(ticketData.venta.total)
+  }
+/>
     </div>
   </div>
 )}
