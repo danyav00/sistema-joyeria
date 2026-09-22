@@ -160,5 +160,78 @@ async function listarDevoluciones(req, res) {
     res.status(500).json({ error: 'Error al listar devoluciones' });
   }
 }
+async function devolverProductosMayorista(req, res) {
+  try {
+    const { creditoId, productosIds } = req.body; // productosIds = array de IDs de creditoMayoristaProducto
 
-module.exports = { buscarVentaPorFolio, crearDevolucion, listarDevoluciones };
+    if (!creditoId || !productosIds || productosIds.length === 0) {
+      return res.status(400).json({ error: 'Faltan datos obligatorios' });
+    }
+
+    const resultado = await prisma.$transaction(async (tx) => {
+      const credito = await tx.creditoMayorista.findUnique({
+        where: { id: Number(creditoId) },
+        include: { productos: true, mayorista: true },
+      });
+
+      if (!credito) throw new Error('Crédito no encontrado');
+      if (credito.estado !== 'ACTIVO') throw new Error('El crédito no está activo');
+
+      const productosDevueltos = [];
+
+      for (const lineaId of productosIds) {
+        const linea = credito.productos.find((p) => p.id === Number(lineaId));
+        if (!linea) continue;
+        if (linea.devuelto || linea.vendido) continue;
+
+        // Marcar como devuelto
+        await tx.creditoMayoristaProducto.update({
+          where: { id: linea.id },
+          data: { devuelto: true },
+        });
+
+        // Regresar al inventario
+        const producto = await tx.producto.findUnique({ where: { id: linea.productoId } });
+        await tx.producto.update({
+          where: { id: linea.productoId },
+          data: {
+            existencia: producto.existencia + 1,
+            estado: 'DISPONIBLE',
+          },
+        });
+
+        await tx.movimientoInventario.create({
+          data: {
+            productoId: linea.productoId,
+            tipoMovimiento: 'DEVOLUCION',
+            cantidad: 1,
+            usuarioId: req.usuario.id,
+            nota: `Devolución de crédito mayorista ${credito.folio}`,
+          },
+        });
+
+        productosDevueltos.push(linea);
+      }
+
+      return { credito, productosDevueltos };
+    });
+
+    await registrarAuditoria({
+      usuarioId: req.usuario.id,
+      accion: 'Devolvió productos de crédito mayorista',
+      tablaAfectada: 'creditos_mayorista',
+      registroId: resultado.credito.id,
+      detalle: `Folio ${resultado.credito.folio} - ${resultado.productosDevueltos.length} producto(s)`,
+    });
+
+    res.json({
+      mensaje: `Se devolvieron ${resultado.productosDevueltos.length} producto(s) al inventario`,
+      ...resultado,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(400).json({ error: error.message || 'Error al devolver productos' });
+  }
+}
+
+module.exports = { buscarVentaPorFolio, crearDevolucion, listarDevoluciones, devolverProductosMayorista };
