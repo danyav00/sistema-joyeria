@@ -9,9 +9,9 @@ const {
 const { verificarToken } = require('../middlewares/auth.middleware');
 const { permitirRoles } = require('../middlewares/roles.middleware');
 
-router.post('/', verificarToken, permitirRoles('ADMINISTRADOR'), abrirCredito);
+router.post('/', verificarToken, permitirRoles('ADMINISTRADOR', 'EMPLEADO'), abrirCredito);
 router.get('/', verificarToken, listarCreditos);
 router.get('/:id', verificarToken, obtenerCredito);
-router.put('/:id/liquidar', verificarToken, permitirRoles('ADMINISTRADOR'), liquidarCredito);
+router.put('/:id/liquidar', verificarToken, permitirRoles('ADMINISTRADOR', 'EMPLEADO'), liquidarCredito);
 
 module.exports = router;

@@ -135,6 +135,7 @@ if (Number(form.cantidad) > producto.existencia) {
 
   const productoSeleccionado = productos.find((p) => p.id === Number(form.productoId));
   const productosFiltrados = productos.filter((p) => {
+    if (!p.existencia || p.existencia < 1) return false;
     const texto = busquedaProducto.toLowerCase();
     return p.sku.toLowerCase().includes(texto) || p.nombre.toLowerCase().includes(texto);
   });

@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import api from '../services/api';
 import Layout from '../components/Layout';
 import Ticket from '../components/Ticket';
-import { imprimirEnVentanaNueva } from '../utils/imprimirTicket';
 import logo from '../assets/logo.png';
 
 function redondear(num) {
@@ -65,8 +64,7 @@ export default function Ventas() {
     if (producto.tieneDescuentoAplicado) return base;
 
     if (tipoDescuento === 'MAYORISTA') {
-      const porcentaje = producto.material === 'ORO_LAMINADO' ? 0.5 : 0.2;
-      return redondear(base * (1 - porcentaje));
+      return redondear(base * 0.5);
     }
     if (tipoDescuento === 'LOCATARIO') {
       return redondear(base * 0.8);
@@ -75,31 +73,29 @@ export default function Ventas() {
   }
 
   function agregarAlCarrito(producto) {
-  // === BLOQUEO DE STOCK ===
-  if (producto.existencia <= 0) {
-    setMensajeBusqueda('Producto agotado');
-    return;
+    if (!producto.existencia || producto.existencia < 1) {
+      setMensajeBusqueda('Producto sin existencia disponible');
+      return;
+    }
+    const yaExiste = carrito.find((item) => item.productoId === producto.id);
+    if (yaExiste) {
+      if (yaExiste.cantidad >= producto.existencia) return;
+      setCarrito(carrito.map((item) =>
+        item.productoId === producto.id ? { ...item, cantidad: item.cantidad + 1 } : item
+      ));
+    } else {
+      setCarrito([...carrito, {
+        productoId: producto.id,
+        nombre: nombreConMaterial(producto),
+        sku: producto.sku,
+        existenciaMaxima: producto.existencia,
+        tieneDescuentoAplicado: producto.tieneDescuentoAplicado,
+        precioBase: Number(producto.codigoPrecio.precio),
+        precio: precioConDescuento(producto),
+        cantidad: 1,
+      }]);
+    }
   }
-
-  const yaExiste = carrito.find((item) => item.productoId === producto.id);
-  if (yaExiste) {
-    if (yaExiste.cantidad >= producto.existencia) return;
-    setCarrito(carrito.map((item) =>
-      item.productoId === producto.id ? { ...item, cantidad: item.cantidad + 1 } : item
-    ));
-  } else {
-    setCarrito([...carrito, {
-      productoId: producto.id,
-      nombre: nombreConMaterial(producto),
-      sku: producto.sku,
-      existenciaMaxima: producto.existencia,
-      tieneDescuentoAplicado: producto.tieneDescuentoAplicado,
-      precioBase: Number(producto.codigoPrecio.precio),
-      precio: precioConDescuento(producto),
-      cantidad: 1,
-    }]);
-  }
-}
 
   function buscarPorSku(e) {
     e.preventDefault();
@@ -111,6 +107,10 @@ export default function Ventas() {
 
     if (!encontrado) {
       setMensajeBusqueda('Producto no encontrado o no disponible');
+      return;
+    }
+    if (!encontrado.existencia || encontrado.existencia < 1) {
+      setMensajeBusqueda('Producto sin existencia disponible');
       return;
     }
 
@@ -181,6 +181,7 @@ export default function Ventas() {
   }
 
   const productosFiltrados = productos.filter((p) => {
+    if (!p.existencia || p.existencia < 1) return false;
     const texto = busquedaSku.trim().toLowerCase();
     if (!texto) return true;
     return p.sku.toLowerCase().includes(texto) || p.nombre.toLowerCase().includes(texto);
@@ -190,6 +191,9 @@ export default function Ventas() {
     setMensaje('');
     try {
       let pagosAEnviar = pagos.map((p) => ({ metodoPago: p.metodoPago, monto: redondear(Number(p.monto) || 0) }));
+      const montoRecibido = totalPagos;
+      const cambioCalculado = diferencia > 0 ? diferencia : 0;
+
       if (diferencia > 0) {
         let restante = diferencia;
         for (let i = pagosAEnviar.length - 1; i >= 0 && restante > 0; i--) {
@@ -219,7 +223,7 @@ export default function Ventas() {
         tipo: 'DIGITAL',
       });
 
-      setTicketData(resTicket.data);
+      setTicketData({ ...resTicket.data, montoRecibido, cambio: cambioCalculado });
       setMensaje('Venta registrada con exito');
       setCarrito([]);
       setPagos([{ metodoPago: 'EFECTIVO', monto: '' }]);
@@ -345,51 +349,21 @@ export default function Ventas() {
           {mensajeBusqueda && <p className="text-red-400 text-xs -mt-2 mb-4">{mensajeBusqueda}</p>}
 
           <div className="grid grid-cols-2 gap-3">
-           {productosFiltrados.map((p) => {
-  const agotado = p.existencia <= 0;
-
-  return (
-    <button
-      key={p.id}
-      onClick={() => !agotado && agregarAlCarrito(p)}
-      disabled={agotado}
-      className={`border p-4 text-left transition-colors ${
-        agotado
-          ? 'border-[#2a251c] opacity-50 cursor-not-allowed'
-          : 'border-[#2a251c] hover:border-[#c9a227]'
-      }`}
-    >
-      <p className="text-[#f5f1e8] text-sm">
-        {nombreConMaterial(p)} {p.tieneDescuentoAplicado && <span className="text-amber-400 text-xs">(OFF)</span>}
-      </p>
-      <p className="text-[#8a8478] text-xs">
-        {p.sku} • {p.material} • {agotado ? 'Agotado' : `Existencia: ${p.existencia}`}
-      </p>
-      <p className="text-[#c9a227] mt-1">
-        {agotado ? 'Agotado' : `$${precioConDescuento(p).toFixed(2)}`}
-      </p>
-    </button>
-  );
-})}
-              {productos.map((p) => (
-  <button key={p.id} className="w-full text-left p-3 rounded bg-[#1a1a1a]">
-    <p className="text-[#f5f1e8] text-sm">
-      {nombreConMaterial(p)}{" "}
-      {p.tieneDescuentoAplicado && (
-        <span className="text-amber-400 text-xs">(OFF)</span>
-      )}
-    </p>
-    <p className="text-[#8a8478] text-xs">
-      {p.sku} • {p.material} • Existencia: {p.existencia}
-    </p>
-    <p className="text-[#c9a227] mt-1">
-      ${precioConDescuento(p).toFixed(2)}
-    </p>
-  </button>
-))}
-</div>
-</div>
-
+            {productosFiltrados.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => agregarAlCarrito(p)}
+                className="border border-[#2a251c] hover:border-[#c9a227] p-4 text-left transition-colors"
+              >
+                <p className="text-[#f5f1e8] text-sm">
+                  {nombreConMaterial(p)} {p.tieneDescuentoAplicado && <span className="text-amber-400 text-xs">(OFF)</span>}
+                </p>
+                <p className="text-[#8a8478] text-xs">{p.sku} • {p.material} • Existencia: {p.existencia}</p>
+                <p className="text-[#c9a227] mt-1">${precioConDescuento(p).toFixed(2)}</p>
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div className="border border-[#2a251c] p-5 h-fit">
           <h3 className="text-sm text-[#f5f1e8] uppercase tracking-wide mb-4">Carrito</h3>
@@ -490,9 +464,9 @@ export default function Ventas() {
       </div>
 
       {ticketData && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 print:bg-white print:relative">
-         <div className="bg-white p-4 max-h-[90vh] overflow-auto ...">
-            <div className="print:hidden flex justify-between items-center mb-4 gap-4">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+          <div className="bg-[#1a1815] p-4 max-h-[90vh] overflow-auto">
+            <div className="flex justify-between items-center mb-4 gap-4">
               <button onClick={imprimirTicket} className="bg-[#c9a227] text-[#1a1815] px-4 py-2 text-sm font-medium">
                 Imprimir ticket
               </button>
@@ -500,7 +474,7 @@ export default function Ventas() {
                 Cerrar
               </button>
             </div>
-            <Ticket venta={ticketData.venta} versiculo={ticketData.versiculo} tipoTicket="VENTA" />
+            <Ticket venta={ticketData.venta} versiculo={ticketData.versiculo} tipoTicket="VENTA" montoRecibido={ticketData.montoRecibido} cambio={ticketData.cambio} />
           </div>
         </div>
       )}

@@ -37,13 +37,18 @@ export default function TicketApartado({ apartado, tipo, montoAbono, versiculo, 
       </div>
 
       <div style={{ borderTop: '1px dashed #000', borderBottom: '1px dashed #000', padding: '6px 0', margin: '6px 0' }}>
-        <p style={{ margin: '0 0 3px 0', fontSize: '10px', fontWeight: 'bold', color: '#000' }}>Producto: {apartado.producto?.sku} — {apartado.producto?.nombre}</p>
-        {apartado.producto?.material && (
-          <p style={{ margin: '0 0 3px 0', fontSize: '9px', fontWeight: 'bold', color: '#000' }}>Material: {etiquetaMaterial(apartado.producto.material)}</p>
-        )}
-        <p style={{ margin: '0 0 3px 0', fontSize: '10px', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', color: '#000' }}>
-          <span>Precio total:</span><span>${Number(apartado.precioTotal).toFixed(2)}</span>
+        <p style={{ margin: '0 0 4px 0', fontSize: '10px', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', color: '#000' }}>
+          <span>Cant. SKU</span>
+          <span>Importe</span>
         </p>
+        <p style={{ margin: '0 0 3px 0', fontSize: '10px', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', color: '#000' }}>
+          <span>{apartado.cantidad} {apartado.producto?.sku}</span>
+          <span>${Number(apartado.precioTotal).toFixed(2)}</span>
+        </p>
+        {apartado.producto?.material && (
+          <p style={{ margin: '0 0 6px 0', fontSize: '9px', fontWeight: 'bold', color: '#000' }}>Material: {etiquetaMaterial(apartado.producto.material)}</p>
+        )}
+
         {tipo === 'CREADO' ? (
           <p style={{ margin: '0 0 3px 0', fontSize: '10px', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', color: '#000' }}>
             <span>Anticipo:</span><span>${Number(apartado.anticipo).toFixed(2)}</span>

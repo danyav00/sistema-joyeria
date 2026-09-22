@@ -249,14 +249,26 @@ function agregarProductoPorSku(e) {
   }, 0);
 
   const productosFiltrados = productos.filter((p) => {
+    if (!p.existencia || p.existencia < 1) return false;
     const texto = busquedaProducto.toLowerCase();
     return p.sku.toLowerCase().includes(texto) || p.nombre.toLowerCase().includes(texto);
   });
 
   const productosFiltradosNuevo = productos.filter((p) => {
+    if (!p.existencia || p.existencia < 1) return false;
     const texto = busquedaProductoNuevo.toLowerCase();
     return p.sku.toLowerCase().includes(texto) || p.nombre.toLowerCase().includes(texto);
   });
+
+  function agregarPorSkuExacto(sku, estadoActual, setEstado, maxLookup) {
+    const match = productos.find((p) => p.sku.toLowerCase() === sku.trim().toLowerCase() && p.existencia > 0);
+    if (!match) return;
+    setEstado((prev) => {
+      const actual = prev[match.id] || 0;
+      const nuevaCantidad = Math.min(actual + 1, match.existencia);
+      return { ...prev, [match.id]: nuevaCantidad };
+    });
+  }
 
   const estadoColor = {
     ACTIVO: 'text-amber-400',
@@ -497,9 +509,16 @@ function agregarProductoPorSku(e) {
                           <p className="text-xs text-[#8a8478] uppercase mb-2">Buscar piezas nuevas (Oro Laminado, 50% descuento)</p>
                           <input
                             type="text"
-                            placeholder="Buscar por SKU o nombre..."
+                            placeholder="Buscar por SKU o nombre (Enter para agregar directo)..."
                             value={busquedaProductoNuevo}
                             onChange={(e) => setBusquedaProductoNuevo(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                agregarPorSkuExacto(busquedaProductoNuevo, productosNuevoCredito, setProductosNuevoCredito);
+                                setBusquedaProductoNuevo('');
+                              }
+                            }}
                             className="w-full bg-transparent border border-[#3a352c] focus:border-[#c9a227] text-[#f5f1e8] px-3 py-2 text-xs outline-none mb-2"
                           />
                           <div className="space-y-2 max-h-48 overflow-auto mb-3">

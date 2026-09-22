@@ -5,7 +5,7 @@ function etiquetaMaterial(material) {
   return material || '';
 }
 
-export default function Ticket({ venta, versiculo, tipoTicket }) {
+export default function Ticket({ venta, versiculo, tipoTicket, montoRecibido, cambio }) {
   const fecha = new Date(venta.fecha);
 
   const etiquetasTipo = {
@@ -77,29 +77,36 @@ export default function Ticket({ venta, versiculo, tipoTicket }) {
         </div>
       )}
 
-      {venta.subtotal !== undefined && (
+      {venta.total !== undefined && (
         <div style={{ marginBottom: '8px' }}>
-          <p style={{ margin: 0, display: 'flex', justifyContent: 'space-between', color: '#000', fontWeight: 'bold' }}>
-            <span>Subtotal:</span><span>${Number(venta.subtotal).toFixed(2)}</span>
-          </p>
-          {Number(venta.descuento) > 0 && (
-            <p style={{ margin: 0, display: 'flex', justifyContent: 'space-between', color: '#000', fontWeight: 'bold' }}>
-              <span>Descuento:</span><span>-${Number(venta.descuento).toFixed(2)}</span>
-            </p>
-          )}
-          <p style={{ margin: 0, display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '13px', color: '#000' }}>
+          <p style={{ margin: 0, display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '14px', color: '#000' }}>
             <span>TOTAL:</span><span>${Number(venta.total).toFixed(2)}</span>
           </p>
         </div>
       )}
 
       {venta.pagos && venta.pagos.length > 0 && (
-        <div style={{ marginBottom: '10px' }}>
+        <div style={{ marginBottom: '6px' }}>
           {venta.pagos.map((p) => (
             <p key={p.id} style={{ margin: 0, display: 'flex', justifyContent: 'space-between', color: '#000', fontWeight: 'bold' }}>
               <span>{p.metodoPago}:</span><span>${Number(p.monto).toFixed(2)}</span>
             </p>
           ))}
+        </div>
+      )}
+
+      {(montoRecibido !== undefined || Number(cambio) > 0) && (
+        <div style={{ marginBottom: '10px', borderTop: '1px dashed #000', paddingTop: '4px' }}>
+          {montoRecibido !== undefined && (
+            <p style={{ margin: 0, display: 'flex', justifyContent: 'space-between', color: '#000', fontWeight: 'bold' }}>
+              <span>Pagó con:</span><span>${Number(montoRecibido).toFixed(2)}</span>
+            </p>
+          )}
+          {Number(cambio) > 0 && (
+            <p style={{ margin: 0, display: 'flex', justifyContent: 'space-between', color: '#000', fontWeight: 'bold', fontSize: '13px' }}>
+              <span>CAMBIO:</span><span>${Number(cambio).toFixed(2)}</span>
+            </p>
+          )}
         </div>
       )}
 
