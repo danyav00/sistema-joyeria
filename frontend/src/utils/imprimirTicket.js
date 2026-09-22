@@ -1,13 +1,28 @@
 export function imprimirEnVentanaNueva(elementoId) {
   const contenido = document.getElementById(elementoId);
+
   if (!contenido) {
-    alert('No se encontró el ticket para imprimir');
+    alert('No se encontró el ticket para imprimir. Intenta de nuevo.');
     return;
   }
 
-  const ventana = window.open('', '_blank', 'width=350,height=700');
+  // Clonamos y forzamos estilos
+  const clon = contenido.cloneNode(true);
+  clon.id = 'ticket-imprimir';
+  clon.style.color = '#000000';
+  clon.style.backgroundColor = '#ffffff';
+  clon.style.background = '#ffffff';
+  clon.style.width = '80mm';
+  clon.style.maxWidth = '80mm';
+  clon.style.margin = '0 auto';
+  clon.style.padding = '4mm';
+  clon.style.boxSizing = 'border-box';
+  clon.style.fontFamily = "'Courier New', Courier, monospace";
+
+  const ventana = window.open('', '_blank', 'width=400,height=700');
+  
   if (!ventana) {
-    alert('El navegador bloqueó la ventana de impresión. Permite ventanas emergentes para este sitio.');
+    alert('El navegador bloqueó la ventana de impresión. Permite las ventanas emergentes.');
     return;
   }
 
@@ -16,29 +31,66 @@ export function imprimirEnVentanaNueva(elementoId) {
     <!DOCTYPE html>
     <html>
       <head>
-        <title>Ticket</title>
+        <title>Ticket - Nixca Joyería</title>
         <meta charset="UTF-8" />
         <style>
-          @page { margin: 0; }
+          @page {
+            size: 80mm auto;
+            margin: 0;
+          }
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+          }
           html, body {
             margin: 0;
             padding: 0;
-            filter: none !important;
-            -webkit-filter: none !important;
+            background: #fff;
+            color: #000;
+          }
+          body {
+            font-family: 'Courier New', Courier, monospace;
+          }
+          #ticket-imprimir {
+            width: 80mm !important;
+            max-width: 80mm !important;
+            margin: 0 auto;
+            padding: 4mm;
+            box-sizing: border-box;
             background: #fff !important;
+            color: #000 !important;
+          }
+          p, span, div {
+            color: #000 !important;
           }
         </style>
       </head>
       <body>
-        ${contenido.outerHTML}
+        ${clon.outerHTML}
       </body>
     </html>
   `);
   ventana.document.close();
 
+  // Esperamos a que cargue completamente antes de imprimir
+  ventana.onload = () => {
+    setTimeout(() => {
+      ventana.focus();
+      ventana.print();
+      
+      // Cerramos la ventana después de un tiempo
+      setTimeout(() => {
+        ventana.close();
+      }, 1000);
+    }, 300);
+  };
+
+  // Fallback por si onload no se dispara
   setTimeout(() => {
-    ventana.focus();
-    ventana.print();
-    setTimeout(() => ventana.close(), 300);
-  }, 300);
+    try {
+      ventana.focus();
+      ventana.print();
+    } catch (e) {}
+  }, 800);
 }
