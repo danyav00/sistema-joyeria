@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../services/api';
 import Layout from '../components/Layout';
 import Ticket from '../components/Ticket';
-import { imprimirEnVentanaNueva } from '../utils/imprimirTicket';  
+import { imprimirEnVentanaNueva } from '../utils/imprimirTicket';
 import logo from '../assets/logo.png';
 
 function redondear(num) {
@@ -65,7 +65,8 @@ export default function Ventas() {
     if (producto.tieneDescuentoAplicado) return base;
 
     if (tipoDescuento === 'MAYORISTA') {
-      return redondear(base * 0.5);
+      const porcentaje = producto.material === 'ORO_LAMINADO' ? 0.5 : 0.2;
+      return redondear(base * (1 - porcentaje));
     }
     if (tipoDescuento === 'LOCATARIO') {
       return redondear(base * 0.8);
@@ -74,10 +75,11 @@ export default function Ventas() {
   }
 
   function agregarAlCarrito(producto) {
-    if (!producto.existencia || producto.existencia < 1) {
-      setMensajeBusqueda('Producto sin existencia disponible');
+    if (producto.existencia <= 0) {
+      setMensajeBusqueda('Producto agotado');
       return;
     }
+
     const yaExiste = carrito.find((item) => item.productoId === producto.id);
     if (yaExiste) {
       if (yaExiste.cantidad >= producto.existencia) return;
@@ -108,10 +110,6 @@ export default function Ventas() {
 
     if (!encontrado) {
       setMensajeBusqueda('Producto no encontrado o no disponible');
-      return;
-    }
-    if (!encontrado.existencia || encontrado.existencia < 1) {
-      setMensajeBusqueda('Producto sin existencia disponible');
       return;
     }
 
@@ -159,7 +157,6 @@ export default function Ventas() {
       if (!producto) return item;
       return { ...item, precio: precioConDescuento(producto) };
     }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tipoDescuento]);
 
   const total = redondear(carrito.reduce((suma, item) => suma + item.precio * (Number(item.cantidad) || 0), 0));
@@ -182,7 +179,6 @@ export default function Ventas() {
   }
 
   const productosFiltrados = productos.filter((p) => {
-    if (!p.existencia || p.existencia < 1) return false;
     const texto = busquedaSku.trim().toLowerCase();
     if (!texto) return true;
     return p.sku.toLowerCase().includes(texto) || p.nombre.toLowerCase().includes(texto);
@@ -191,10 +187,13 @@ export default function Ventas() {
   async function confirmarVenta() {
     setMensaje('');
     try {
-      let pagosAEnviar = pagos.map((p) => ({ metodoPago: p.metodoPago, monto: redondear(Number(p.monto) || 0) }));
-      const montoRecibido = totalPagos;
-      const cambioCalculado = diferencia > 0 ? diferencia : 0;
+      // Guardamos el monto original que pagó el cliente
+      const montoRecibido = redondear(pagos.reduce((suma, p) => suma + (Number(p.monto) || 0), 0));
+      const cambio = redondear(montoRecibido - total);
 
+      let pagosAEnviar = pagos.map((p) => ({ metodoPago: p.metodoPago, monto: redondear(Number(p.monto) || 0) }));
+
+      // Ajustamos solo lo que se guarda en la base de datos
       if (diferencia > 0) {
         let restante = diferencia;
         for (let i = pagosAEnviar.length - 1; i >= 0 && restante > 0; i--) {
@@ -224,7 +223,12 @@ export default function Ventas() {
         tipo: 'DIGITAL',
       });
 
-      setTicketData({ ...resTicket.data, montoRecibido, cambio: cambioCalculado });
+      setTicketData({
+        ...resTicket.data,
+        montoRecibido,
+        cambio,
+      });
+
       setMensaje('Venta registrada con exito');
       setCarrito([]);
       setPagos([{ metodoPago: 'EFECTIVO', monto: '' }]);
@@ -236,10 +240,6 @@ export default function Ventas() {
     } catch (err) {
       setMensaje(err.response?.data?.error || 'Error al registrar la venta');
     }
-  }
-
-  function imprimirTicket() {
-    imprimirEnVentanaNueva('ticket-imprimir');
   }
 
   if (cargando) {
@@ -350,19 +350,31 @@ export default function Ventas() {
           {mensajeBusqueda && <p className="text-red-400 text-xs -mt-2 mb-4">{mensajeBusqueda}</p>}
 
           <div className="grid grid-cols-2 gap-3">
-            {productosFiltrados.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => agregarAlCarrito(p)}
-                className="border border-[#2a251c] hover:border-[#c9a227] p-4 text-left transition-colors"
-              >
-                <p className="text-[#f5f1e8] text-sm">
-                  {nombreConMaterial(p)} {p.tieneDescuentoAplicado && <span className="text-amber-400 text-xs">(OFF)</span>}
-                </p>
-                <p className="text-[#8a8478] text-xs">{p.sku} • {p.material} • Existencia: {p.existencia}</p>
-                <p className="text-[#c9a227] mt-1">${precioConDescuento(p).toFixed(2)}</p>
-              </button>
-            ))}
+            {productosFiltrados.map((p) => {
+              const agotado = p.existencia <= 0;
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => !agotado && agregarAlCarrito(p)}
+                  disabled={agotado}
+                  className={`border p-4 text-left transition-colors ${
+                    agotado
+                      ? 'border-[#2a251c] opacity-50 cursor-not-allowed'
+                      : 'border-[#2a251c] hover:border-[#c9a227]'
+                  }`}
+                >
+                  <p className="text-[#f5f1e8] text-sm">
+                    {nombreConMaterial(p)} {p.tieneDescuentoAplicado && <span className="text-amber-400 text-xs">(OFF)</span>}
+                  </p>
+                  <p className="text-[#8a8478] text-xs">
+                    {p.sku} • {p.material} • {agotado ? 'Agotado' : `Existencia: ${p.existencia}`}
+                  </p>
+                  <p className="text-[#c9a227] mt-1">
+                    {agotado ? 'Agotado' : `$${precioConDescuento(p).toFixed(2)}`}
+                  </p>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -465,34 +477,32 @@ export default function Ventas() {
       </div>
 
       {ticketData && (
-  <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-    <div className="bg-[#1a1815] p-4 max-h-[90vh] overflow-auto relative z-10 shadow-xl">
-      <div className="flex justify-between items-center mb-4 gap-4">
-        <button
-          onClick={() => imprimirEnVentanaNueva('ticket-imprimir')}
-          className="bg-[#c9a227] hover:bg-[#b8931f] text-[#1a1815] px-4 py-2 text-sm font-medium"
-        >
-          Imprimir ticket
-        </button>
-        <button
-          onClick={() => setTicketData(null)}
-          className="text-[#8a8478] text-sm hover:text-[#f5f1e8]"
-        >
-          Cerrar
-        </button>
-      </div>
-     <Ticket 
-  venta={ticketData.venta} 
-  versiculo={ticketData.versiculo} 
-  tipoTicket="VENTA"
-  montoRecibido={ticketData.venta.pagos?.reduce((suma, p) => suma + Number(p.monto), 0)}
-  cambio={
-    (ticketData.venta.pagos?.reduce((suma, p) => suma + Number(p.monto), 0) || 0) - Number(ticketData.venta.total)
-  }
-/>
-    </div>
-  </div>
-)}
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#1a1815] p-4 max-h-[90vh] overflow-auto relative z-10 shadow-xl">
+            <div className="flex justify-between items-center mb-4 gap-4">
+              <button
+                onClick={() => imprimirEnVentanaNueva('ticket-imprimir')}
+                className="bg-[#c9a227] hover:bg-[#b8931f] text-[#1a1815] px-4 py-2 text-sm font-medium"
+              >
+                Imprimir ticket
+              </button>
+              <button
+                onClick={() => setTicketData(null)}
+                className="text-[#8a8478] text-sm hover:text-[#f5f1e8]"
+              >
+                Cerrar
+              </button>
+            </div>
+            <Ticket
+              venta={ticketData.venta}
+              versiculo={ticketData.versiculo}
+              tipoTicket="VENTA"
+              montoRecibido={ticketData.montoRecibido}
+              cambio={ticketData.cambio}
+            />
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }
