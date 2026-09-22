@@ -464,20 +464,26 @@ export default function Ventas() {
       </div>
 
       {ticketData && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-          <div className="bg-[#1a1815] p-4 max-h-[90vh] overflow-auto">
-            <div className="flex justify-between items-center mb-4 gap-4">
-              <button onClick={imprimirTicket} className="bg-[#c9a227] text-[#1a1815] px-4 py-2 text-sm font-medium">
-                Imprimir ticket
-              </button>
-              <button onClick={() => setTicketData(null)} className="text-[#8a8478] text-sm hover:text-[#f5f1e8]">
-                Cerrar
-              </button>
-            </div>
-            <Ticket venta={ticketData.venta} versiculo={ticketData.versiculo} tipoTicket="VENTA" montoRecibido={ticketData.montoRecibido} cambio={ticketData.cambio} />
-          </div>
-        </div>
-      )}
+  <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+    <div className="bg-[#1a1815] p-4 max-h-[90vh] overflow-auto relative z-10 shadow-xl">
+      <div className="flex justify-between items-center mb-4 gap-4">
+        <button
+          onClick={() => imprimirEnVentanaNueva('ticket-imprimir')}
+          className="bg-[#c9a227] hover:bg-[#b8931f] text-[#1a1815] px-4 py-2 text-sm font-medium"
+        >
+          Imprimir ticket
+        </button>
+        <button
+          onClick={() => setTicketData(null)}
+          className="text-[#8a8478] text-sm hover:text-[#f5f1e8]"
+        >
+          Cerrar
+        </button>
+      </div>
+      <Ticket venta={ticketData.venta} versiculo={ticketData.versiculo} tipoTicket="VENTA" />
+    </div>
+  </div>
+)}
     </Layout>
   );
 }
