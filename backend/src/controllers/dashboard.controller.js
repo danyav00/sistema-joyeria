@@ -17,14 +17,14 @@ async function obtenerDashboard(req, res) {
     const inicioMes = inicioDelMes();
     const ahora = new Date();
 
-    const usuario = req.user; // viene del middleware de auth
+    const usuario = req.usuario; // ← correcto
 
     // 🔒 Filtrado por rol
     let filtroVentas = {};
-    if (usuario.rol === "empleado") {
+
+    if (usuario.rol === 'EMPLEADO') {   // asegúrate que el rol esté en mayúsculas como en tu BD
       filtroVentas = {
-        empleadoId: usuario.id,
-        turnoId: usuario.turnoActual,
+        usuarioId: usuario.id,          // ← campo correcto
       };
     }
 
@@ -37,13 +37,24 @@ async function obtenerDashboard(req, res) {
       mayoristasActivos,
     ] = await Promise.all([
       prisma.venta.findMany({
-        where: { ...filtroVentas, fecha: { gte: inicioDia, lte: ahora } },
+        where: {
+          ...filtroVentas,
+          fecha: { gte: inicioDia, lte: ahora },
+        },
       }),
       prisma.venta.findMany({
-        where: { ...filtroVentas, fecha: { gte: inicioMes, lte: ahora } },
-        include: { detalles: { include: { producto: true } }, pagos: true },
+        where: {
+          ...filtroVentas,
+          fecha: { gte: inicioMes, lte: ahora },
+        },
+        include: {
+          detalles: { include: { producto: true } },
+          pagos: true,
+        },
       }),
-      prisma.gasto.findMany({ where: { fecha: { gte: inicioMes, lte: ahora } } }),
+      prisma.gasto.findMany({
+        where: { fecha: { gte: inicioMes, lte: ahora } },
+      }),
       prisma.producto.count(),
       prisma.apartado.count({ where: { estado: 'ACTIVO' } }),
       prisma.mayorista.count({ where: { estado: 'ACTIVO' } }),
@@ -59,15 +70,16 @@ async function obtenerDashboard(req, res) {
 
     for (const venta of ventasMes) {
       for (const detalle of venta.detalles) {
-        const nombre = detalle.producto.nombre;
+        const nombre = detalle.producto?.nombre || 'Sin nombre';
         productosVendidos[nombre] = (productosVendidos[nombre] || 0) + detalle.cantidad;
 
-        const material = detalle.producto.material;
+        const material = detalle.producto?.material || 'OTRO';
         ventasPorMaterial[material] = (ventasPorMaterial[material] || 0) + Number(detalle.subtotal);
       }
 
       for (const pago of venta.pagos) {
-        ventasPorMetodoPago[pago.metodoPago] = (ventasPorMetodoPago[pago.metodoPago] || 0) + Number(pago.monto);
+        ventasPorMetodoPago[pago.metodoPago] =
+          (ventasPorMetodoPago[pago.metodoPago] || 0) + Number(pago.monto);
       }
     }
 
@@ -92,5 +104,3 @@ async function obtenerDashboard(req, res) {
     res.status(500).json({ error: 'Error al obtener el dashboard' });
   }
 }
-
-module.exports = { obtenerDashboard };
