@@ -99,8 +99,10 @@ async function obtenerDashboard(req, res) {
       ventasPorMaterial,
       ventasPorMetodoPago,
     });
-  } catch (error) {
+    } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error al obtener el dashboard' });
   }
 }
+
+module.exports = { obtenerDashboard };
