@@ -4,7 +4,7 @@ const { generarCorte, obtenerCorte, listarCortes, eliminarCorte } = require('../
 const { verificarToken } = require('../middlewares/auth.middleware');
 const { permitirRoles } = require('../middlewares/roles.middleware');
 
-router.post('/turno/:turnoId', verificarToken, generarCorte);
+router.post('/turno/:turnoId', verificarToken, permitirRoles('ADMINISTRADOR', 'EMPLEADO'), generarCorte);
 router.get('/turno/:turnoId', verificarToken, obtenerCorte);
 router.get('/', verificarToken, listarCortes);
 router.delete('/:id', verificarToken, permitirRoles('ADMINISTRADOR'), eliminarCorte);
