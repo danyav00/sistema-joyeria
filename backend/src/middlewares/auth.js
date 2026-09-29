@@ -22,12 +22,12 @@ async function authMiddleware(req, res, next) {
     }
 
     // Inyectar datos en req.user
-   req.user = {
-  id: usuario.id,
-  rol: usuario.rol, // ADMINISTRADOR, EMPLEADO, SOCIO
-  turnoActual: usuario.turnos.find(t => t.estado === "ABIERTO")?.id || null
-};
-
+    req.user = {
+      id: usuario.id,
+      nombre: usuario.nombre, // 👈 necesario para que el frontend muestre el nombre
+      rol: usuario.rol,       // ADMINISTRADOR, EMPLEADO, SOCIO
+      turnoActual: usuario.turnos.find(t => t.estado === "ABIERTO")?.id || null
+    };
 
     next();
   } catch (error) {
