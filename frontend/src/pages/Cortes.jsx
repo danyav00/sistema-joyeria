@@ -8,7 +8,7 @@ export default function Cortes() {
   const [cortes, setCortes] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [mensaje, setMensaje] = useState('');
-    const [apartadosDelCorte, setApartadosDelCorte] = useState(null);
+  const [apartadosDelCorte, setApartadosDelCorte] = useState(null);
   const { usuario } = useAuth();
 
   function cargarDatos() {
@@ -57,29 +57,34 @@ export default function Cortes() {
         <h2 className="text-2xl text-[#f5f1e8] mb-6" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Cortes de turno</h2>
 
         {turno ? (
-  <div className="border border-[#2a251c] p-5 mb-6">
-    <p className="text-[#f5f1e8] mb-1">
-      Turno activo: <span className="text-[#c9a227]">{turno.tipo}</span>
-    </p>
-    <p className="text-[#8a8478] text-sm mb-3">
-      Abierto a las {turno.horaApertura}
-    </p>
-    {mensaje && <p className="text-red-400 text-xs mb-3">{mensaje}</p>}
-    <button
-      onClick={generarCorte}
-      className="bg-[#c9a227] hover:bg-[#b8931f] text-[#1a1815] font-medium px-4 py-2 text-sm"
-    >
-      Generar corte y cerrar turno
-    </button>
-  </div>
-) : (
-  <div className="border border-[#2a251c] p-5 mb-6">
-    <p className="text-[#8a8478] mb-2">No tienes un turno abierto actualmente.</p>
-    <p className="text-xs text-[#8a8478]">
-      Ve a <strong>Punto de Venta</strong> y abre un turno antes de poder hacer el corte.
-    </p>
-  </div>
-)}
+          <div className="border border-[#2a251c] p-5 mb-6">
+            <p className="text-[#f5f1e8] mb-1">
+              Turno activo: <span className="text-[#c9a227]">{turno.tipo}</span>
+            </p>
+            <p className="text-[#8a8478] text-sm mb-3">
+              Abierto a las{" "}
+              {new Date(turno.fechaApertura).toLocaleString("es-MX", {
+                timeZone: "America/Mexico_City",
+                hour: "2-digit",
+                minute: "2-digit"
+              })}
+            </p>
+            {mensaje && <p className="text-red-400 text-xs mb-3">{mensaje}</p>}
+            <button
+              onClick={generarCorte}
+              className="bg-[#c9a227] hover:bg-[#b8931f] text-[#1a1815] font-medium px-4 py-2 text-sm"
+            >
+              Generar corte y cerrar turno
+            </button>
+          </div>
+        ) : (
+          <div className="border border-[#2a251c] p-5 mb-6">
+            <p className="text-[#8a8478] mb-2">No tienes un turno abierto actualmente.</p>
+            <p className="text-xs text-[#8a8478]">
+              Ve a <strong>Punto de Venta</strong> y abre un turno antes de poder hacer el corte.
+            </p>
+          </div>
+        )}
 
         {apartadosDelCorte && (
           <div className="border border-[#2a251c] p-5 mb-6">
@@ -109,34 +114,44 @@ export default function Cortes() {
           <>
             <h3 className="text-sm text-[#f5f1e8] uppercase tracking-wide mb-4">Historial de cortes</h3>
             <div className="space-y-3">
-          {cortes.map((c) => (
-            <div key={c.id} className="border border-[#2a251c] p-4">
-              <div className="flex justify-between mb-2">
-                <div>
-                  <p className="text-[#f5f1e8] text-sm">{c.turno.tipo} — {new Date(c.fecha).toLocaleDateString('es-MX')}</p>
-                  <p className="text-[#8a8478] text-xs">Realizado por: {c.usuario?.nombre || '—'}</p>
+              {cortes.map((c) => (
+                <div key={c.id} className="border border-[#2a251c] p-4">
+                  <div className="flex justify-between mb-2">
+                    <div>
+                      <p className="text-[#f5f1e8] text-sm">
+                        {c.turno.tipo} —{" "}
+                        {new Date(c.fecha).toLocaleString("es-MX", {
+                          timeZone: "America/Mexico_City",
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit"
+                        })}
+                      </p>
+                      <p className="text-[#8a8478] text-xs">Realizado por: {c.usuario?.nombre || '—'}</p>
+                    </div>
+                    <p className="text-[#c9a227]">${Number(c.totalFinal).toFixed(2)}</p>
+                  </div>
+                  <div className="grid grid-cols-4 gap-3 text-xs text-[#8a8478] mb-2">
+                    <p>Ventas: ${Number(c.totalVentas).toFixed(2)}</p>
+                    <p>Gastos: ${Number(c.totalGastos).toFixed(2)}</p>
+                    <p>Efectivo: ${Number(c.totalEfectivo).toFixed(2)}</p>
+                    <p>Tarjeta: ${Number(c.totalTarjeta).toFixed(2)}</p>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3 text-xs text-[#8a8478]">
+                    <p>Oro: ${Number(c.totalOro || 0).toFixed(2)}</p>
+                    <p>Plata: ${Number(c.totalPlata || 0).toFixed(2)}</p>
+                    <p>Oro Laminado: ${Number(c.totalOroLaminado || 0).toFixed(2)}</p>
+                  </div>
+                  {usuario?.rol === 'ADMINISTRADOR' && (
+                    <button onClick={() => eliminarCorte(c.id)} className="text-xs text-red-400 hover:underline">
+                      Eliminar corte
+                    </button>
+                  )}
                 </div>
-                <p className="text-[#c9a227]">${Number(c.totalFinal).toFixed(2)}</p>
-              </div>
-                           <div className="grid grid-cols-4 gap-3 text-xs text-[#8a8478] mb-2">
-                <p>Ventas: ${Number(c.totalVentas).toFixed(2)}</p>
-                <p>Gastos: ${Number(c.totalGastos).toFixed(2)}</p>
-                <p>Efectivo: ${Number(c.totalEfectivo).toFixed(2)}</p>
-                <p>Tarjeta: ${Number(c.totalTarjeta).toFixed(2)}</p>
-              </div>
-              <div className="grid grid-cols-3 gap-3 text-xs text-[#8a8478]">
-                <p>Oro: ${Number(c.totalOro || 0).toFixed(2)}</p>
-                <p>Plata: ${Number(c.totalPlata || 0).toFixed(2)}</p>
-                <p>Oro Laminado: ${Number(c.totalOroLaminado || 0).toFixed(2)}</p>
-              </div>
-              {usuario?.rol === 'ADMINISTRADOR' && (
-                <button onClick={() => eliminarCorte(c.id)} className="text-xs text-red-400 hover:underline">
-                  Eliminar corte
-                </button>
-              )}
+              ))}
             </div>
-          ))}
-                   </div>
           </>
         )}
       </div>

@@ -1,5 +1,14 @@
 const prisma = require('../utils/prisma');
 
+function horaLocalMX(fecha = new Date()) {
+  return new Intl.DateTimeFormat("es-MX", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "America/Mexico_City"
+  }).format(fecha);
+}
+
 async function abrirTurno(req, res) {
   try {
     const { tipo } = req.body;
@@ -13,13 +22,14 @@ async function abrirTurno(req, res) {
     }
 
     const ahora = new Date();
-    const horaTexto = ahora.toTimeString().slice(0, 5);
+    const horaTexto = horaLocalMX(ahora);
 
     const turno = await prisma.turno.create({
       data: {
         tipo,
         usuarioId: req.usuario.id,
-        horaApertura: horaTexto,
+        fechaApertura: ahora,   // guarda fecha completa
+        horaApertura: horaTexto // guarda hora local México
       },
     });
 
@@ -34,11 +44,15 @@ async function cerrarTurno(req, res) {
   try {
     const { id } = req.params;
     const ahora = new Date();
-    const horaTexto = ahora.toTimeString().slice(0, 5);
+    const horaTexto = horaLocalMX(ahora);
 
     const turno = await prisma.turno.update({
       where: { id: Number(id) },
-      data: { estado: 'CERRADO', fechaCierre: ahora, horaCierre: horaTexto },
+      data: {
+        estado: 'CERRADO',
+        fechaCierre: ahora,     // guarda fecha completa
+        horaCierre: horaTexto   // guarda hora local México
+      },
     });
 
     res.json(turno);
