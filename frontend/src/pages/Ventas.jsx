@@ -38,18 +38,23 @@ export default function Ventas() {
   const [busquedaMayorista, setBusquedaMayorista] = useState('');
 
   useEffect(() => {
-    Promise.all([
-      api.get('/turnos/activo'),
-      api.get('/productos?estado=DISPONIBLE'),
-      api.get('/mayoristas'),
-    ])
-      .then(([resTurno, resProductos, resMayoristas]) => {
+  Promise.all([
+    api.get('/turnos/activo'),
+    api.get('/productos?estado=DISPONIBLE'),
+    api.get('/mayoristas'),
+  ])
+    .then(([resTurno, resProductos, resMayoristas]) => {
+      if (!resTurno.data) {
+        setTurno(null);
+        // aquí puedes disparar un modal o redirigir a "abrir turno"
+      } else {
         setTurno(resTurno.data);
-        setProductos(resProductos.data);
-        setMayoristas(resMayoristas.data);
-      })
-      .finally(() => setCargando(false));
-  }, []);
+      }
+      setProductos(resProductos.data);
+      setMayoristas(resMayoristas.data);
+    })
+    .finally(() => setCargando(false));
+}, []);
 
   async function abrirTurno(tipo) {
     try {
@@ -75,6 +80,13 @@ export default function Ventas() {
   }
 
   function agregarAlCarrito(producto) {
+    // 🚫 Validar que haya turno activo
+    if (!turno) {
+      alert('Debes abrir un turno antes de vender');
+      return;
+    }
+
+    // 🚫 Validar existencia
     if (producto.existencia <= 0) {
       setMensajeBusqueda('Producto agotado');
       return;
@@ -83,20 +95,27 @@ export default function Ventas() {
     const yaExiste = carrito.find((item) => item.productoId === producto.id);
     if (yaExiste) {
       if (yaExiste.cantidad >= producto.existencia) return;
-      setCarrito(carrito.map((item) =>
-        item.productoId === producto.id ? { ...item, cantidad: item.cantidad + 1 } : item
-      ));
+      setCarrito(
+        carrito.map((item) =>
+          item.productoId === producto.id
+            ? { ...item, cantidad: item.cantidad + 1 }
+            : item
+        )
+      );
     } else {
-      setCarrito([...carrito, {
-        productoId: producto.id,
-        nombre: nombreConMaterial(producto),
-        sku: producto.sku,
-        existenciaMaxima: producto.existencia,
-        tieneDescuentoAplicado: producto.tieneDescuentoAplicado,
-        precioBase: Number(producto.codigoPrecio.precio),
-        precio: precioConDescuento(producto),
-        cantidad: 1,
-      }]);
+      setCarrito([
+        ...carrito,
+        {
+          productoId: producto.id,
+          nombre: nombreConMaterial(producto),
+          sku: producto.sku,
+          existenciaMaxima: producto.existencia,
+          tieneDescuentoAplicado: producto.tieneDescuentoAplicado,
+          precioBase: Number(producto.codigoPrecio.precio),
+          precio: precioConDescuento(producto),
+          cantidad: 1,
+        },
+      ]);
     }
   }
 

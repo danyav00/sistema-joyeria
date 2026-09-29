@@ -57,16 +57,29 @@ export default function Cortes() {
         <h2 className="text-2xl text-[#f5f1e8] mb-6" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Cortes de turno</h2>
 
         {turno ? (
-          <div className="border border-[#2a251c] p-5 mb-6">
-            <p className="text-[#f5f1e8] mb-3">Turno activo: {turno.tipo} — abierto a las {turno.horaApertura}</p>
-            {mensaje && <p className="text-red-400 text-xs mb-3">{mensaje}</p>}
-            <button onClick={generarCorte} className="bg-[#c9a227] hover:bg-[#b8931f] text-[#1a1815] font-medium px-4 py-2 text-sm">
-              Generar corte y cerrar turno
-            </button>
-          </div>
-        ) : (
-          <p className="text-[#8a8478] mb-6">No tienes un turno abierto actualmente.</p>
-        )}
+  <div className="border border-[#2a251c] p-5 mb-6">
+    <p className="text-[#f5f1e8] mb-1">
+      Turno activo: <span className="text-[#c9a227]">{turno.tipo}</span>
+    </p>
+    <p className="text-[#8a8478] text-sm mb-3">
+      Abierto a las {turno.horaApertura}
+    </p>
+    {mensaje && <p className="text-red-400 text-xs mb-3">{mensaje}</p>}
+    <button
+      onClick={generarCorte}
+      className="bg-[#c9a227] hover:bg-[#b8931f] text-[#1a1815] font-medium px-4 py-2 text-sm"
+    >
+      Generar corte y cerrar turno
+    </button>
+  </div>
+) : (
+  <div className="border border-[#2a251c] p-5 mb-6">
+    <p className="text-[#8a8478] mb-2">No tienes un turno abierto actualmente.</p>
+    <p className="text-xs text-[#8a8478]">
+      Ve a <strong>Punto de Venta</strong> y abre un turno antes de poder hacer el corte.
+    </p>
+  </div>
+)}
 
         {apartadosDelCorte && (
           <div className="border border-[#2a251c] p-5 mb-6">

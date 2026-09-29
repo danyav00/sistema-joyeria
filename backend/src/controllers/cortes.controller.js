@@ -8,14 +8,19 @@ async function generarCorte(req, res) {
       const turno = await tx.turno.findUnique({ where: { id: Number(turnoId) } });
       if (!turno) throw new Error('Turno no encontrado');
 
+      // Validación: el empleado solo puede cerrar su propio turno
+      if (req.usuario.rol === 'EMPLEADO' && turno.usuarioId !== req.usuario.id) {
+        throw new Error('No puedes cerrar un turno que no es tuyo');
+      }
+
       const corteExistente = await tx.corte.findUnique({ where: { turnoId: Number(turnoId) } });
       if (corteExistente) throw new Error('Este turno ya tiene un corte generado');
 
-            const ventas = await tx.venta.findMany({
+      const ventas = await tx.venta.findMany({
         where: { turnoId: Number(turnoId) },
         include: { pagos: true, detalles: { include: { producto: true } } },
       });
-      
+
       const apartadosLiquidados = await tx.apartado.findMany({
         where: {
           estado: { in: ['LIQUIDADO', 'ENTREGADO'] },
@@ -28,7 +33,14 @@ async function generarCorte(req, res) {
             },
           },
         },
-        include: { producto: true, abonos: { where: { fecha: { gte: new Date(new Date().setHours(0, 0, 0, 0)) } } } },
+        include: {
+          producto: true,
+          abonos: {
+            where: {
+              fecha: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
+            },
+          },
+        },
       });
 
       const gastos = await tx.gasto.findMany({ where: { turnoId: Number(turnoId) } });
@@ -39,8 +51,13 @@ async function generarCorte(req, res) {
         .filter((v) => v.estado === 'CON_DEVOLUCION')
         .reduce((suma, v) => suma + Number(v.total), 0);
 
-           let totalEfectivo = 0, totalTarjeta = 0, totalTransferencia = 0, totalDeposito = 0;
-      let totalOro = 0, totalPlata = 0, totalOroLaminado = 0;
+      let totalEfectivo = 0,
+        totalTarjeta = 0,
+        totalTransferencia = 0,
+        totalDeposito = 0;
+      let totalOro = 0,
+        totalPlata = 0,
+        totalOroLaminado = 0;
 
       for (const venta of ventas) {
         for (const pago of venta.pagos) {
@@ -53,15 +70,15 @@ async function generarCorte(req, res) {
 
         for (const detalle of venta.detalles) {
           const subtotal = Number(detalle.subtotal);
-          if (detalle.producto.material === 'ORO') totalOro += subtotal;
-          if (detalle.producto.material === 'PLATA') totalPlata += subtotal;
-          if (detalle.producto.material === 'ORO_LAMINADO') totalOroLaminado += subtotal;
+          if (detalle.producto?.material === 'ORO') totalOro += subtotal;
+          if (detalle.producto?.material === 'PLATA') totalPlata += subtotal;
+          if (detalle.producto?.material === 'ORO_LAMINADO') totalOroLaminado += subtotal;
         }
       }
 
       const totalFinal = totalVentas - totalGastos - totalDevoluciones;
 
-                const corte = await tx.corte.create({
+      const corte = await tx.corte.create({
         data: {
           turnoId: Number(turnoId),
           totalVentas,
@@ -81,7 +98,11 @@ async function generarCorte(req, res) {
 
       await tx.turno.update({
         where: { id: Number(turnoId) },
-        data: { estado: 'CERRADO', fechaCierre: new Date(), horaCierre: new Date().toTimeString().slice(0, 5) },
+        data: {
+          estado: 'CERRADO',
+          fechaCierre: new Date(),
+          horaCierre: new Date().toTimeString().slice(0, 5),
+        },
       });
 
       return { corte, apartadosLiquidados };
@@ -122,6 +143,7 @@ async function listarCortes(req, res) {
     res.status(500).json({ error: 'Error al listar cortes' });
   }
 }
+
 async function eliminarCorte(req, res) {
   try {
     const { id } = req.params;
@@ -138,7 +160,7 @@ async function eliminarCorte(req, res) {
       });
     });
 
-    res.json({ mensaje: 'Corte eliminado correctamente, el turno se reabrio' });
+    res.json({ mensaje: 'Corte eliminado correctamente, el turno se reabrió' });
   } catch (error) {
     console.error(error);
     res.status(400).json({ error: error.message || 'Error al eliminar el corte' });

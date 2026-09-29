@@ -17,15 +17,29 @@ async function obtenerDashboard(req, res) {
     const inicioMes = inicioDelMes();
     const ahora = new Date();
 
-    const usuario = req.usuario; // ← correcto
+    const usuario = req.usuario;
+    const esEmpleado = usuario.rol === 'EMPLEADO';
 
-    // 🔒 Filtrado por rol
+    // Filtro de ventas
     let filtroVentas = {};
 
-    if (usuario.rol === 'EMPLEADO') {   // asegúrate que el rol esté en mayúsculas como en tu BD
+    if (esEmpleado) {
+      // Buscamos el turno abierto del empleado
+      const turnoActivo = await prisma.turno.findFirst({
+        where: {
+          usuarioId: usuario.id,
+          estado: 'ABIERTO',
+        },
+      });
+
       filtroVentas = {
-        usuarioId: usuario.id,          // ← campo correcto
+        usuarioId: usuario.id,
       };
+
+      // Si tiene turno abierto, filtramos también por ese turno
+      if (turnoActivo) {
+        filtroVentas.turnoId = turnoActivo.id;
+      }
     }
 
     const [
@@ -36,25 +50,37 @@ async function obtenerDashboard(req, res) {
       apartadosActivos,
       mayoristasActivos,
     ] = await Promise.all([
+      // Ventas de hoy (filtradas si es empleado)
       prisma.venta.findMany({
         where: {
           ...filtroVentas,
           fecha: { gte: inicioDia, lte: ahora },
         },
-      }),
-      prisma.venta.findMany({
-        where: {
-          ...filtroVentas,
-          fecha: { gte: inicioMes, lte: ahora },
-        },
         include: {
-          detalles: { include: { producto: true } },
           pagos: true,
         },
       }),
-      prisma.gasto.findMany({
-        where: { fecha: { gte: inicioMes, lte: ahora } },
-      }),
+
+      // Ventas del mes (solo administradores)
+      esEmpleado
+        ? Promise.resolve([])
+        : prisma.venta.findMany({
+            where: {
+              fecha: { gte: inicioMes, lte: ahora },
+            },
+            include: {
+              detalles: { include: { producto: true } },
+              pagos: true,
+            },
+          }),
+
+      // Gastos del mes (solo administradores)
+      esEmpleado
+        ? Promise.resolve([])
+        : prisma.gasto.findMany({
+            where: { fecha: { gte: inicioMes, lte: ahora } },
+          }),
+
       prisma.producto.count(),
       prisma.apartado.count({ where: { estado: 'ACTIVO' } }),
       prisma.mayorista.count({ where: { estado: 'ACTIVO' } }),
@@ -64,22 +90,28 @@ async function obtenerDashboard(req, res) {
     const totalVentasMes = ventasMes.reduce((suma, v) => suma + Number(v.total), 0);
     const totalGastosMes = gastosMes.reduce((suma, g) => suma + Number(g.monto), 0);
 
+    // Productos más vendidos y métodos de pago (solo admin)
     const productosVendidos = {};
-    const ventasPorMaterial = {};
     const ventasPorMetodoPago = {};
 
-    for (const venta of ventasMes) {
-      for (const detalle of venta.detalles) {
-        const nombre = detalle.producto?.nombre || 'Sin nombre';
-        productosVendidos[nombre] = (productosVendidos[nombre] || 0) + detalle.cantidad;
-
-        const material = detalle.producto?.material || 'OTRO';
-        ventasPorMaterial[material] = (ventasPorMaterial[material] || 0) + Number(detalle.subtotal);
+    if (!esEmpleado) {
+      for (const venta of ventasMes) {
+        for (const detalle of venta.detalles || []) {
+          const nombre = detalle.producto?.nombre || 'Sin nombre';
+          productosVendidos[nombre] = (productosVendidos[nombre] || 0) + detalle.cantidad;
+        }
+        for (const pago of venta.pagos || []) {
+          ventasPorMetodoPago[pago.metodoPago] =
+            (ventasPorMetodoPago[pago.metodoPago] || 0) + Number(pago.monto);
+        }
       }
-
-      for (const pago of venta.pagos) {
-        ventasPorMetodoPago[pago.metodoPago] =
-          (ventasPorMetodoPago[pago.metodoPago] || 0) + Number(pago.monto);
+    } else {
+      // Para empleados: métodos de pago solo de sus ventas de hoy
+      for (const venta of ventasHoy) {
+        for (const pago of venta.pagos || []) {
+          ventasPorMetodoPago[pago.metodoPago] =
+            (ventasPorMetodoPago[pago.metodoPago] || 0) + Number(pago.monto);
+        }
       }
     }
 
@@ -89,6 +121,7 @@ async function obtenerDashboard(req, res) {
       .map(([nombre, cantidad]) => ({ nombre, cantidad }));
 
     res.json({
+      esEmpleado,
       ventasHoy: totalVentasHoy,
       ventasMes: totalVentasMes,
       gastosMes: totalGastosMes,
@@ -96,10 +129,9 @@ async function obtenerDashboard(req, res) {
       apartadosActivos,
       mayoristasActivos,
       productosMasVendidos,
-      ventasPorMaterial,
       ventasPorMetodoPago,
     });
-    } catch (error) {
+  } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error al obtener el dashboard' });
   }

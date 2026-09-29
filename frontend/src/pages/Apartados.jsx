@@ -18,7 +18,13 @@ export default function Apartados() {
   const [ticketVentaLiquidacion, setTicketVentaLiquidacion] = useState(null);
   const [busquedaProducto, setBusquedaProducto] = useState('');
 
-  const [form, setForm] = useState({ productoId: '', clienteNombre: '', clienteTelefono: '', anticipo: '', cantidad: 1 });
+  const [form, setForm] = useState({
+    productoId: '',
+    clienteNombre: '',
+    clienteTelefono: '',
+    anticipo: '',
+    cantidad: 1,
+  });
 
   function cargarDatos() {
     setCargando(true);
@@ -48,21 +54,39 @@ export default function Apartados() {
   async function crearApartado(e) {
     e.preventDefault();
     setMensaje('');
+
     const producto = productos.find((p) => p.id === Number(form.productoId));
-if (!producto || producto.existencia <= 0) {
-  setMensaje('Producto agotado o no disponible');
-  return;
-}
-if (Number(form.cantidad) > producto.existencia) {
-  setMensaje(`Solo hay ${producto.existencia} disponibles`);
-  return;
-}
+
+    if (!producto || producto.existencia <= 0) {
+      setMensaje('Producto agotado o no disponible');
+      return;
+    }
+    if (Number(form.cantidad) > producto.existencia) {
+      setMensaje(`Solo hay ${producto.existencia} disponibles`);
+      return;
+    }
+
     try {
       const res = await api.post('/apartados', form);
-      setForm({ productoId: '', clienteNombre: '', clienteTelefono: '', anticipo: '', cantidad: 1 });
+
+      // Guardamos el producto antes de limpiar el formulario
+      setTicketApartado({
+        apartado: { ...res.data, producto },
+        tipo: 'CREADO',
+        versiculo: res.data.versiculo,
+        atendio: usuario?.nombre,
+      });
+
+      // Ahora sí limpiamos
+      setForm({
+        productoId: '',
+        clienteNombre: '',
+        clienteTelefono: '',
+        anticipo: '',
+        cantidad: 1,
+      });
+      setBusquedaProducto('');
       setMostrarForm(false);
-      const producto = productos.find((p) => p.id === Number(form.productoId));
-      setTicketApartado({ apartado: { ...res.data, producto }, tipo: 'CREADO', versiculo: res.data.versiculo, atendio: usuario?.nombre });
       cargarDatos();
     } catch (err) {
       setMensaje(err.response?.data?.error || 'Error al crear el apartado');
@@ -133,12 +157,24 @@ if (Number(form.cantidad) > producto.existencia) {
     }
   }
 
+  // Selección automática al escribir el SKU
+  function handleBusquedaProducto(e) {
+    const valor = e.target.value;
+    setBusquedaProducto(valor);
+
+    if (valor.trim().length < 2) return;
+
+    const encontrado = productos.find(
+      (p) => p.sku.toLowerCase() === valor.trim().toLowerCase()
+    );
+
+    if (encontrado && encontrado.existencia > 0) {
+      setForm((prev) => ({ ...prev, productoId: encontrado.id }));
+      setMensaje(`Producto seleccionado: ${encontrado.nombre}`);
+    }
+  }
+
   const productoSeleccionado = productos.find((p) => p.id === Number(form.productoId));
-  const productosFiltrados = productos.filter((p) => {
-    if (!p.existencia || p.existencia < 1) return false;
-    const texto = busquedaProducto.toLowerCase();
-    return p.sku.toLowerCase().includes(texto) || p.nombre.toLowerCase().includes(texto);
-  });
 
   const estadoColor = {
     ACTIVO: 'text-amber-400',
@@ -156,7 +192,11 @@ if (Number(form.cantidad) > producto.existencia) {
           </h2>
           <div className="flex gap-3">
             <button
-              onClick={() => setMostrarForm(!mostrarForm)}
+              onClick={() => {
+                setMostrarForm(!mostrarForm);
+                setMensaje('');
+                setBusquedaProducto('');
+              }}
               className="bg-[#c9a227] hover:bg-[#b8931f] text-[#1a1815] font-medium px-4 py-2 text-sm transition-colors"
             >
               {mostrarForm ? 'Cancelar' : '+ Nuevo apartado'}
@@ -171,120 +211,84 @@ if (Number(form.cantidad) > producto.existencia) {
         </div>
 
         {mostrarForm && (
-  <form onSubmit={crearApartado} className="border border-[#2a251c] p-5 mb-6 grid grid-cols-2 gap-4">
-    {/* Input de búsqueda con selección automática */}
-    <input
-      type="text"
-      placeholder="Teclea código o SKU del producto..."
-      value={busquedaProducto}
-      onChange={(e) => setBusquedaProducto(e.target.value)}
-     onKeyPress={(e) => {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    const encontrado = productos.find(
-      (p) =>
-        p.sku.toLowerCase() === busquedaProducto.toLowerCase() ||
-        p.nombre.toLowerCase() === busquedaProducto.toLowerCase()
-    );
+          <form onSubmit={crearApartado} className="border border-[#2a251c] p-5 mb-6 grid grid-cols-2 gap-4">
+            {/* Solo un input para el SKU */}
+            <div className="col-span-2">
+              <input
+                type="text"
+                placeholder="Escribe o escanea el SKU del producto..."
+                value={busquedaProducto}
+                onChange={handleBusquedaProducto}
+                className="w-full bg-transparent border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227]"
+                autoFocus
+              />
+              {productoSeleccionado && (
+                <p className="text-green-400 text-xs mt-1">
+                  Seleccionado: {productoSeleccionado.sku} — {productoSeleccionado.nombre} 
+                  (Existencia: {productoSeleccionado.existencia})
+                </p>
+              )}
+            </div>
 
-    if (!encontrado) {
-      setMensaje('Producto no encontrado');
-      return;
-    }
+            {productoSeleccionado && (
+              <div className="col-span-2">
+                <label className="text-xs text-[#8a8478] uppercase">
+                  Cantidad (máximo {productoSeleccionado.existencia})
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max={productoSeleccionado.existencia}
+                  value={form.cantidad}
+                  onChange={(e) => setForm({ ...form, cantidad: e.target.value })}
+                  onBlur={(e) => {
+                    let val = parseInt(e.target.value, 10);
+                    if (isNaN(val) || val < 1) val = 1;
+                    if (val > productoSeleccionado.existencia) val = productoSeleccionado.existencia;
+                    setForm((prev) => ({ ...prev, cantidad: val }));
+                  }}
+                  onFocus={(e) => e.target.select()}
+                  className="w-full bg-transparent border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227]"
+                />
+              </div>
+            )}
 
-    if (encontrado.existencia <= 0) {
-      setMensaje('Producto agotado');
-      return;
-    }
+            <input
+              placeholder="Nombre del cliente"
+              value={form.clienteNombre}
+              onChange={(e) => setForm({ ...form, clienteNombre: e.target.value })}
+              className="bg-transparent border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227]"
+              required
+            />
 
-    setForm({ ...form, productoId: encontrado.id });
-    setMensaje(`Producto seleccionado: ${encontrado.nombre}`);
-  }
-}}
-      className="bg-transparent border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227] col-span-2"
-    />
+            <input
+              placeholder="Teléfono"
+              value={form.clienteTelefono}
+              onChange={(e) => setForm({ ...form, clienteTelefono: e.target.value })}
+              className="bg-transparent border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227]"
+              required
+            />
 
-    {/* Select como respaldo */}
-  <select
-  value={form.productoId}
-  onChange={(e) => setForm({ ...form, productoId: e.target.value })}
-  className="bg-[#1a1815] border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227] col-span-2"
-  required
->
-  <option value="">Selecciona un producto</option>
-  {productosFiltrados.map((p) => {
-    const agotado = p.existencia <= 0;
-    return (
-      <option 
-        key={p.id} 
-        value={p.id}
-        disabled={agotado}
-      >
-        {p.sku} — {p.nombre} — ${Number(p.codigoPrecio.precio).toFixed(2)} — {agotado ? 'Agotado' : `Existencia: ${p.existencia}`}
-      </option>
-    );
-  })}
-</select>
+            <input
+              type="number"
+              placeholder="Anticipo (mínimo 20%)"
+              value={form.anticipo}
+              onChange={(e) => setForm({ ...form, anticipo: e.target.value })}
+              className="bg-transparent border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227] col-span-2"
+              required
+            />
 
-    {productoSeleccionado && (
-      <div className="col-span-2">
-        <label className="text-xs text-[#8a8478] uppercase">
-          Cantidad (máximo {productoSeleccionado.existencia})
-        </label>
-        <input
-          type="number"
-          min="1"
-          max={productoSeleccionado.existencia}
-          value={form.cantidad}
-          onChange={(e) => setForm({ ...form, cantidad: e.target.value })}
-          onBlur={(e) => {
-            let val = parseInt(e.target.value, 10);
-            if (isNaN(val) || val < 1) val = 1;
-            if (val > productoSeleccionado.existencia) val = productoSeleccionado.existencia;
-            setForm((prev) => ({ ...prev, cantidad: val }));
-          }}
-          onFocus={(e) => e.target.select()}
-          className="w-full bg-transparent border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227]"
-        />
-      </div>
-    )}
+            {mensaje && <p className="text-amber-400 text-xs col-span-2">{mensaje}</p>}
 
-    <input
-      placeholder="Nombre del cliente"
-      value={form.clienteNombre}
-      onChange={(e) => setForm({ ...form, clienteNombre: e.target.value })}
-      className="bg-transparent border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227]"
-      required
-    />
-
-    <input
-      placeholder="Teléfono"
-      value={form.clienteTelefono}
-      onChange={(e) => setForm({ ...form, clienteTelefono: e.target.value })}
-      className="bg-transparent border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227]"
-      required
-    />
-
-    <input
-      type="number"
-      placeholder="Anticipo (mínimo 20%)"
-      value={form.anticipo}
-      onChange={(e) => setForm({ ...form, anticipo: e.target.value })}
-      className="bg-transparent border border-[#3a352c] text-[#f5f1e8] px-3 py-2 text-sm outline-none focus:border-[#c9a227] col-span-2"
-      required
-    />
-
-    {mensaje && <p className="text-red-400 text-xs col-span-2">{mensaje}</p>}
-
-    <button
-      type="submit"
-      className="bg-[#c9a227] hover:bg-[#b8931f] text-[#1a1815] font-medium py-2 text-sm col-span-2"
-    >
-      Crear apartado
-    </button>
-  </form>
-)}
-
+            <button
+              type="submit"
+              disabled={!form.productoId}
+              className="bg-[#c9a227] hover:bg-[#b8931f] text-[#1a1815] font-medium py-2 text-sm col-span-2 disabled:opacity-50"
+            >
+              Crear apartado
+            </button>
+          </form>
+        )}
 
         {cargando ? (
           <p className="text-[#8a8478]">Cargando...</p>
@@ -293,7 +297,9 @@ if (Number(form.cantidad) > producto.existencia) {
             {apartados.map((a) => (
               <div key={a.id} className="border border-[#2a251c] p-4 flex items-center justify-between">
                 <div>
-                  <p className="text-[#f5f1e8] text-sm">{a.producto.sku} — {a.producto.nombre} x{a.cantidad} — {a.clienteNombre}</p>
+                  <p className="text-[#f5f1e8] text-sm">
+                    {a.producto?.sku} — {a.producto?.nombre} x{a.cantidad} — {a.clienteNombre}
+                  </p>
                   <p className="text-[#8a8478] text-xs">
                     Tel: {a.clienteTelefono} • Saldo: ${Number(a.saldoPendiente).toFixed(2)} de ${Number(a.precioTotal).toFixed(2)}
                   </p>
@@ -333,12 +339,15 @@ if (Number(form.cantidad) > producto.existencia) {
       </div>
 
       {ticketApartado && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 print:bg-white print:relative">
-          <div className="bg-[#1a1815] p-4 max-h-[90vh] overflow-auto print:bg-white print:p-0 print:max-h-none">
-            <div className="print:hidden flex justify-between items-center mb-4 gap-4">
-              <button onClick={() => imprimirEnVentanaNueva('ticket-imprimir')} className="bg-[#c9a227] text-[#1a1815] px-4 py-2 text-sm font-medium">
-  Imprimir ticket
-</button>
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#1a1815] p-4 max-h-[90vh] overflow-auto relative z-10">
+            <div className="flex justify-between items-center mb-4 gap-4">
+              <button
+                onClick={() => imprimirEnVentanaNueva('ticket-imprimir')}
+                className="bg-[#c9a227] text-[#1a1815] px-4 py-2 text-sm font-medium"
+              >
+                Imprimir ticket
+              </button>
               <button onClick={() => setTicketApartado(null)} className="text-[#8a8478] text-sm hover:text-[#f5f1e8]">
                 Cerrar
               </button>
@@ -355,10 +364,13 @@ if (Number(form.cantidad) > producto.existencia) {
       )}
 
       {ticketVentaLiquidacion && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 print:bg-white print:relative">
-          <div className="bg-[#1a1815] p-4 max-h-[90vh] overflow-auto print:bg-white print:p-0 print:max-h-none">
-            <div className="print:hidden flex justify-between items-center mb-4 gap-4">
-              <button onClick={() => window.print()} className="bg-[#c9a227] text-[#1a1815] px-4 py-2 text-sm font-medium">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#1a1815] p-4 max-h-[90vh] overflow-auto relative z-10">
+            <div className="flex justify-between items-center mb-4 gap-4">
+              <button
+                onClick={() => imprimirEnVentanaNueva('ticket-imprimir')}
+                className="bg-[#c9a227] text-[#1a1815] px-4 py-2 text-sm font-medium"
+              >
                 Imprimir ticket
               </button>
               <button onClick={() => setTicketVentaLiquidacion(null)} className="text-[#8a8478] text-sm hover:text-[#f5f1e8]">

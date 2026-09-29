@@ -583,23 +583,40 @@ function agregarProductoPorSku(e) {
           </div>
         )}
       </div>
-
       {ticketCredito && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 print:bg-white print:relative">
-          <div className="bg-[#1a1815] p-4 max-h-[90vh] overflow-auto print:bg-white print:p-0 print:max-h-none">
-            <div className="print:hidden flex justify-between items-center mb-4 gap-4">
-              <button onClick={() => imprimirEnVentanaNueva('ticket-imprimir')} className="bg-[#c9a227] text-[#1a1815] px-4 py-2 text-sm font-medium">
-  Imprimir ticket
-</button>
-              <button onClick={() => setTicketCredito(null)} className="text-[#8a8478] text-sm hover:text-[#f5f1e8]">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#1a1815] p-4 max-h-[90vh] overflow-auto relative z-10 shadow-xl">
+            <div className="flex justify-between items-center mb-4 gap-4">
+              <button
+                onClick={() => imprimirEnVentanaNueva('ticket-imprimir')}
+                className="bg-[#c9a227] hover:bg-[#b8931f] text-[#1a1815] px-4 py-2 text-sm font-medium"
+              >
+                Imprimir ticket
+              </button>
+              <button
+                onClick={() => setTicketCredito(null)}
+                className="text-[#8a8478] text-sm hover:text-[#f5f1e8]"
+              >
                 Cerrar
               </button>
             </div>
-            <TicketCredito credito={ticketCredito.credito} tipo={ticketCredito.tipo} versiculo={ticketCredito.versiculo} atendio={ticketCredito.atendio} />
+
+            <TicketCredito
+              credito={ticketCredito.credito}
+              tipo={ticketCredito.tipo}
+              versiculo={ticketCredito.versiculo}
+              atendio={ticketCredito.atendio}
+            />
+
             {ticketCredito.creditoNuevo && (
-              <div className="mt-4 print:mt-0 print:break-before-page">
-                <p className="text-xs text-[#c9a227] mb-2 print:hidden">-- Crédito nuevo generado --</p>
-                <TicketCredito credito={ticketCredito.creditoNuevo} tipo="ABIERTO" versiculo={ticketCredito.versiculo} atendio={ticketCredito.atendio} />
+              <div className="mt-6 border-t border-[#3a352c] pt-4">
+                <p className="text-xs text-[#c9a227] mb-3">-- Crédito nuevo generado --</p>
+                <TicketCredito
+                  credito={ticketCredito.creditoNuevo}
+                  tipo="ABIERTO"
+                  versiculo={ticketCredito.versiculo}
+                  atendio={ticketCredito.atendio}
+                />
               </div>
             )}
           </div>
