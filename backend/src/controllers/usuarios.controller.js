@@ -61,10 +61,24 @@ async function login(req, res) {
     }
 
     const token = jwt.sign(
-      { id: usuarioEncontrado.id, rol: usuarioEncontrado.rol },
-      process.env.JWT_SECRET,
-      { expiresIn: '8h' }
-    );
+  {
+    id: usuarioEncontrado.id,
+    nombre: usuarioEncontrado.nombre, // 👈 incluir nombre
+    rol: usuarioEncontrado.rol,
+  },
+  process.env.JWT_SECRET,
+  { expiresIn: '8h' }
+);
+
+res.json({
+  token,
+  usuario: {
+    id: usuarioEncontrado.id,
+    nombre: usuarioEncontrado.nombre,
+    usuario: usuarioEncontrado.usuario,
+    rol: usuarioEncontrado.rol,
+  },
+});
 
     res.json({
       token,

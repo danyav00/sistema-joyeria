@@ -1,6 +1,8 @@
+// src/middlewares/auth.js
 const jwt = require('jsonwebtoken');
+const prisma = require('../utils/prisma');
 
-function verificarToken(req, res, next) {
+async function verificarToken(req, res, next) {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -11,10 +13,26 @@ function verificarToken(req, res, next) {
 
   try {
     const datos = jwt.verify(token, process.env.JWT_SECRET);
-    req.usuario = datos;
+
+    // Buscar usuario en BD para obtener nombre y rol
+    const usuario = await prisma.usuario.findUnique({
+      where: { id: datos.id },
+    });
+
+    if (!usuario) {
+      return res.status(401).json({ error: 'Usuario no encontrado' });
+    }
+
+    // Inyectar datos completos en req.usuario
+    req.usuario = {
+      id: usuario.id,
+      nombre: usuario.nombre, // 👈 ahora sí
+      rol: usuario.rol,
+    };
+
     next();
   } catch (error) {
-    return res.status(401).json({ error: 'Token invalido o expirado' });
+    return res.status(401).json({ error: 'Token inválido o expirado' });
   }
 }
 
